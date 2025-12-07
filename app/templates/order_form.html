@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}{% if order %}Редактирование заказа{% else %}Добавление заказа{% endif %} - ООО «Обувь»{% endblock %}
+
+{% block header_title %}{% if order %}Редактирование заказа{% else %}Добавление заказа{% endif %}{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-box">
+        <form method="post" 
+              action="{% if order %}/orders/update/{{ order.id }}{% else %}/orders/create{% endif %}" 
+              class="order-form">
+            
+            {% if order %}
+            <div class="form-group">
+                <label for="order_id">ID заказа:</label>
+                <input type="text" id="order_id" value="{{ order.id }}" readonly>
+            </div>
+            {% endif %}
+            
+            <div class="form-group">
+                <label for="article">Артикул заказа:</label>
+                <input type="text" id="article" name="article" 
+                       value="{% if order %}{{ order.article }}{% endif %}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="status">Статус заказа:</label>
+                <select id="status" name="status" required>
+                    <option value="">Выберите статус</option>
+                    {% for status_option in statuses %}
+                    <option value="{{ status_option }}" {% if order and order.status == status_option %}selected{% endif %}>
+                        {{ status_option }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="pickup_address">Адрес пункта выдачи:</label>
+                <textarea id="pickup_address" name="pickup_address" rows="3" required>{% if order %}{{ order.pickup_address }}{% endif %}</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="order_date">Дата заказа:</label>
+                <input type="datetime-local" id="order_date" name="order_date" 
+                       value="{% if order and order.order_date %}{{ order.order_date.strftime('%Y-%m-%dT%H:%M') }}{% endif %}" 
+                       required>
+            </div>
+            
+            <div class="form-group">
+                <label for="delivery_date">Дата доставки:</label>
+                <input type="datetime-local" id="delivery_date" name="delivery_date" 
+                       value="{% if order and order.delivery_date %}{{ order.delivery_date.strftime('%Y-%m-%dT%H:%M') }}{% endif %}">
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">{% if order %}Сохранить{% else %}Добавить{% endif %}</button>
+                <a href="/orders/" class="btn btn-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}{% if product %}Редактирование товара{% else %}Добавление товара{% endif %} - ООО «Обувь»{% endblock %}
+
+{% block header_title %}{% if product %}Редактирование товара{% else %}Добавление товара{% endif %}{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-box">
+        <form method="post" 
+              action="{% if product %}/products/update/{{ product.id }}{% else %}/products/create{% endif %}" 
+              enctype="multipart/form-data"
+              class="product-form">
+            
+            {% if product %}
+            <div class="form-group">
+                <label for="product_id">ID товара:</label>
+                <input type="text" id="product_id" value="{{ product.id }}" readonly>
+            </div>
+            {% endif %}
+            
+            <div class="form-group">
+                <label for="name">Наименование товара:</label>
+                <input type="text" id="name" name="name" value="{% if product %}{{ product.name }}{% endif %}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="category_id">Категория товара:</label>
+                <select id="category_id" name="category_id" required>
+                    <option value="">Выберите категорию</option>
+                    {% for category in categories %}
+                    <option value="{{ category.id }}" {% if product and product.category_id == category.id %}selected{% endif %}>
+                        {{ category.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Описание товара:</label>
+                <textarea id="description" name="description" rows="4">{% if product %}{{ product.description or '' }}{% endif %}</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="manufacturer_id">Производитель:</label>
+                <select id="manufacturer_id" name="manufacturer_id" required>
+                    <option value="">Выберите производителя</option>
+                    {% for manufacturer in manufacturers %}
+                    <option value="{{ manufacturer.id }}" {% if product and product.manufacturer_id == manufacturer.id %}selected{% endif %}>
+                        {{ manufacturer.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="supplier_id">Поставщик:</label>
+                <select id="supplier_id" name="supplier_id" required>
+                    <option value="">Выберите поставщика</option>
+                    {% for supplier in suppliers %}
+                    <option value="{{ supplier.id }}" {% if product and product.supplier_id == supplier.id %}selected{% endif %}>
+                        {{ supplier.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="price">Цена:</label>
+                <input type="number" id="price" name="price" 
+                       value="{% if product %}{{ product.price }}{% endif %}" 
+                       step="0.01" min="0" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="unit">Единица измерения:</label>
+                <input type="text" id="unit" name="unit" 
+                       value="{% if product %}{{ product.unit }}{% endif %}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="stock_quantity">Количество на складе:</label>
+                <input type="number" id="stock_quantity" name="stock_quantity" 
+                       value="{% if product %}{{ product.stock_quantity }}{% endif %}" 
+                       min="0" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="discount_percent">Действующая скидка (%):</label>
+                <input type="number" id="discount_percent" name="discount_percent" 
+                       value="{% if product %}{{ product.discount_percent }}{% endif %}" 
+                       min="0" max="100" step="0.1" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="image">Фото товара:</label>
+                <input type="file" id="image" name="image" accept="image/*">
+                {% if product and product.image_path %}
+                <div class="current-image">
+                    <p>Текущее изображение:</p>
+                    <img src="/{{ product.image_path }}" alt="Текущее изображение" style="max-width: 300px; max-height: 200px;">
+                </div>
+                {% else %}
+                <div class="current-image">
+                    <p>Изображение-заглушка:</p>
+                    <img src="/static/images/picture.png" alt="Заглушка" style="max-width: 300px; max-height: 200px;">
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">{% if product %}Сохранить{% else %}Добавить{% endif %}</button>
+                <a href="/products/" class="btn btn-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

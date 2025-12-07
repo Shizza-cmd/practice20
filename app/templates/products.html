@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Список товаров - ООО «Обувь»{% endblock %}
+
+{% block header_title %}Список товаров{% endblock %}
+
+{% block content %}
+<div class="products-container">
+    {% if current_user and current_user.role in ['manager', 'admin'] %}
+    <div class="filters-panel">
+        <form method="get" action="/products/" class="filters-form">
+            <div class="filter-group">
+                <label for="search">Поиск:</label>
+                <input type="text" id="search" name="search" value="{{ search }}" placeholder="Поиск по всем полям...">
+            </div>
+            <div class="filter-group">
+                <label for="supplier_id">Поставщик:</label>
+                <select id="supplier_id" name="supplier_id">
+                    <option value="">Все поставщики</option>
+                    {% for supplier in suppliers %}
+                    <option value="{{ supplier.id }}" {% if selected_supplier_id == supplier.id %}selected{% endif %}>
+                        {{ supplier.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="sort_by_stock">Сортировка по количеству:</label>
+                <select id="sort_by_stock" name="sort_by_stock">
+                    <option value="">Без сортировки</option>
+                    <option value="asc" {% if sort_by_stock == 'asc' %}selected{% endif %}>По возрастанию</option>
+                    <option value="desc" {% if sort_by_stock == 'desc' %}selected{% endif %}>По убыванию</option>
+                </select>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+    
+    {% if current_user and current_user.role == 'admin' %}
+    <div class="actions-panel">
+        <a href="/products/add" class="btn btn-primary">Добавить товар</a>
+    </div>
+    {% endif %}
+    
+    <div class="products-grid">
+        {% for product in products %}
+        <div class="product-card {% if product.discount_percent > 15 %}high-discount{% endif %} {% if product.stock_quantity == 0 %}out-of-stock{% endif %}"
+             {% if current_user and current_user.role == 'admin' %}onclick="location.href='/products/edit/{{ product.id }}'" style="cursor: pointer;"{% endif %}>
+            <div class="product-image">
+                {% if product.image_path %}
+                <img src="/{{ product.image_path }}" alt="{{ product.name }}">
+                {% else %}
+                <img src="/static/images/picture.png" alt="Нет изображения">
+                {% endif %}
+            </div>
+            <div class="product-info">
+                <h3>{{ product.category.name }} | {{ product.name }}</h3>
+                <p><strong>Описание товара:</strong> {{ product.description or 'Нет описания' }}</p>
+                <p><strong>Производитель:</strong> {{ product.manufacturer.name }}</p>
+                <p><strong>Поставщик:</strong> {{ product.supplier.name }}</p>
+                <p class="price">
+                    <strong>Цена:</strong>
+                    {% if product.discount_percent > 0 %}
+                    <span class="old-price">{{ "%.2f"|format(product.price) }} руб.</span>
+                    <span class="new-price">{{ "%.2f"|format(product.price * (1 - product.discount_percent / 100)) }} руб.</span>
+                    {% else %}
+                    <span>{{ "%.2f"|format(product.price) }} руб.</span>
+                    {% endif %}
+                </p>
+                <p><strong>Единица измерения:</strong> {{ product.unit }}</p>
+                <p><strong>Количество на складе:</strong> {{ product.stock_quantity }}</p>
+                {% if product.discount_percent > 0 %}
+                <p class="discount"><strong>Действующая скидка:</strong> {{ "%.1f"|format(product.discount_percent) }}%</p>
+                {% endif %}
+            </div>
+            {% if current_user and current_user.role == 'admin' %}
+            <div class="product-actions">
+                <form method="post" action="/products/delete/{{ product.id }}" style="display: inline;" onsubmit="return confirm('Вы уверены, что хотите удалить этот товар?');">
+                    <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    
+    {% if not products %}
+    <div class="empty-state">
+        <p>Товары не найдены</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Автоматическая отправка формы при изменении фильтров
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('search');
+        const supplierSelect = document.getElementById('supplier_id');
+        const sortSelect = document.getElementById('sort_by_stock');
+        
+        if (searchInput) {
+            let searchTimeout;
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(function() {
+                    document.querySelector('.filters-form').submit();
+                }, 500);
+            });
+        }
+        
+        if (supplierSelect) {
+            supplierSelect.addEventListener('change', function() {
+                document.querySelector('.filters-form').submit();
+            });
+        }
+        
+        if (sortSelect) {
+            sortSelect.addEventListener('change', function() {
+                document.querySelector('.filters-form').submit();
+            });
+        }
+    });
+</script>
+{% endblock %}
+

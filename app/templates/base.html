@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ООО «Обувь»{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <img src="/static/images/Icon.png" alt="Логотип" style="height: 50px; width: auto;" onerror="this.src='/static/images/Icon.JPG'; this.onerror=null;">
+                <h1>{% block header_title %}ООО «Обувь»{% endblock %}</h1>
+            </div>
+            <div class="user-info">
+                {% if current_user %}
+                    <span class="user-name">{{ current_user.full_name }}</span>
+                    <a href="/auth/logout" class="btn btn-secondary">Выход</a>
+                {% else %}
+                    <a href="/" class="btn btn-secondary">Вход</a>
+                {% endif %}
+            </div>
+        </div>
+        {% if current_user and current_user.role in ['manager', 'admin'] %}
+        <nav>
+            <a href="/products/" class="nav-link">Товары</a>
+            <a href="/orders/" class="nav-link">Заказы</a>
+        </nav>
+        {% endif %}
+    </header>
+    
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    
+    <footer>
+        <p>&copy; 2024 ООО «Обувь». Все права защищены.</p>
+    </footer>
+    
+    <script src="/static/js/main.js"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
+
