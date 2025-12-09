@@ -198,67 +198,96 @@ def create_products_view(page: ft.Page, app_state):
                     product_card = ft.Container(
                         content=ft.Row(
                             [
-                                # Левая часть - фото
-                                image_widget,
+                                # Левая часть - фото (квадратная область)
+                                ft.Container(
+                                    content=image_widget,
+                                    width=150,
+                                    height=150,
+                                    border=ft.border.all(2, "#000000"),
+                                    padding=5
+                                ),
                                 # Средняя часть - информация о товаре
                                 ft.Container(
                                     content=ft.Column(
                                         [
-                                            # Заголовок: Категория | Наименование
+                                            # Заголовок: Категория товара | Наименование товара
                                             ft.Text(
-                                                f"{category_name} | {product.name}",
-                                                size=18,
+                                                f"Категория товара | Наименование товара",
+                                                size=11,
                                                 weight=ft.FontWeight.BOLD,
                                                 color=text_color,
                                                 font_family="Times New Roman"
                                             ),
-                                            ft.Divider(height=5, color=ft.Colors.TRANSPARENT),
-                                            ft.Text(f"Описание товара: {product.description or 'Нет описания'}", size=12, color=text_color, font_family="Times New Roman"),
-                                            ft.Text(f"Производитель: {manufacturer_name}", size=12, color=text_color, font_family="Times New Roman"),
-                                            ft.Text(f"Поставщик: {supplier_name}", size=12, color=text_color, font_family="Times New Roman"),
-                                            price_widget,
-                                            ft.Text(f"Единица измерения: {product.unit}", size=12, color=text_color, font_family="Times New Roman"),
-                                            ft.Text(f"Количество на складе: {product.stock_quantity}", size=12, color=text_color, font_family="Times New Roman"),
-                                            actions_row
-                                        ],
-                                        spacing=5,
-                                        expand=True
-                                    ),
-                                    expand=True,
-                                    padding=10
-                                ),
-                                # Правая часть - скидка
-                                ft.Container(
-                                    content=ft.Column(
-                                        [
                                             ft.Text(
-                                                "Действующая скидка",
+                                                f"{category_name} | {product.name}",
                                                 size=14,
                                                 weight=ft.FontWeight.BOLD,
                                                 color=text_color,
                                                 font_family="Times New Roman"
                                             ),
+                                            ft.Text(f"Описание товара:", size=11, weight=ft.FontWeight.BOLD, color=text_color, font_family="Times New Roman"),
+                                            ft.Text(f"{product.description or 'Нет описания'}", size=12, color=text_color, font_family="Times New Roman"),
+                                            ft.Text(f"Производитель:", size=11, weight=ft.FontWeight.BOLD, color=text_color, font_family="Times New Roman"),
+                                            ft.Text(f"{manufacturer_name}", size=12, color=text_color, font_family="Times New Roman"),
+                                            ft.Text(f"Поставщик:", size=11, weight=ft.FontWeight.BOLD, color=text_color, font_family="Times New Roman"),
+                                            ft.Text(f"{supplier_name}", size=12, color=text_color, font_family="Times New Roman"),
+                                            ft.Text(f"Цена:", size=11, weight=ft.FontWeight.BOLD, color=text_color, font_family="Times New Roman"),
+                                            price_widget,
+                                            ft.Text(f"Единица измерения:", size=11, weight=ft.FontWeight.BOLD, color=text_color, font_family="Times New Roman"),
+                                            ft.Text(f"{product.unit}", size=12, color=text_color, font_family="Times New Roman"),
+                                            ft.Text(f"Количество на складе:", size=11, weight=ft.FontWeight.BOLD, color=text_color, font_family="Times New Roman"),
+                                            ft.Text(f"{product.stock_quantity}", size=12, color=text_color, font_family="Times New Roman"),
+                                            actions_row if role == "admin" else ft.Container()
+                                        ],
+                                        spacing=3,
+                                        expand=True
+                                    ),
+                                    expand=True,
+                                    padding=10
+                                ),
+                                # Правая часть - действующая скидка (отдельный блок)
+                                ft.Container(
+                                    content=ft.Column(
+                                        [
                                             ft.Text(
-                                                f"{product.discount_percent:.1f}%",
-                                                size=24,
+                                                "Действующая",
+                                                size=13,
                                                 weight=ft.FontWeight.BOLD,
                                                 color=text_color,
-                                                font_family="Times New Roman"
-                                            ) if product.discount_percent > 0 else ft.Text("0%", size=24, color=text_color, font_family="Times New Roman")
+                                                font_family="Times New Roman",
+                                                text_align=ft.TextAlign.CENTER
+                                            ),
+                                            ft.Text(
+                                                "скидка",
+                                                size=13,
+                                                weight=ft.FontWeight.BOLD,
+                                                color=text_color,
+                                                font_family="Times New Roman",
+                                                text_align=ft.TextAlign.CENTER
+                                            ),
+                                            ft.Container(height=10),
+                                            ft.Text(
+                                                f"{product.discount_percent:.0f}%",
+                                                size=28,
+                                                weight=ft.FontWeight.BOLD,
+                                                color=text_color,
+                                                font_family="Times New Roman",
+                                                text_align=ft.TextAlign.CENTER
+                                            )
                                         ],
                                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                                         alignment=ft.MainAxisAlignment.CENTER
                                     ),
-                                    width=150,
+                                    width=120,
+                                    border=ft.border.all(2, "#000000"),
                                     padding=10
                                 )
                             ],
-                            spacing=10
+                            spacing=0
                         ),
                         bgcolor=bg_color,
-                        border=ft.border.all(1, "#CCCCCC"),
-                        border_radius=5,
-                        padding=10,
+                        border=ft.border.all(2, "#000000"),
+                        padding=0,
                         on_click=lambda e, p_id=product.id: edit_product(p_id) if role == "admin" else None,
                         data=product.id
                     )
@@ -362,73 +391,73 @@ def create_products_view(page: ft.Page, app_state):
                     label="ID товара",
                     value=str(product.id),
                     read_only=True,
-                    bgcolor=ft.Colors.GREY_800,
-                    color=ft.Colors.WHITE
+bgcolor="#FFFFFF",
+            color="#000000"
                 )
             
             name_field = ft.TextField(
                 label="Название", 
                 value=product.name if product else "",
-                bgcolor=ft.Colors.GREY_700,
-                color=ft.Colors.WHITE
+bgcolor="#FFFFFF",
+            color="#000000"
             )
             description_field = ft.TextField(
                 label="Описание", 
                 value=product.description if product else "", 
                 multiline=True,
-                bgcolor=ft.Colors.GREY_700,
-                color=ft.Colors.WHITE
+bgcolor="#FFFFFF",
+            color="#000000"
             )
             price_field = ft.TextField(
                 label="Цена", 
                 value=str(product.price) if product else "0", 
                 keyboard_type=ft.KeyboardType.NUMBER,
-                bgcolor=ft.Colors.GREY_700,
-                color=ft.Colors.WHITE
+bgcolor="#FFFFFF",
+            color="#000000"
             )
             unit_field = ft.TextField(
                 label="Единица измерения", 
                 value=product.unit if product else "шт",
-                bgcolor=ft.Colors.GREY_700,
-                color=ft.Colors.WHITE
+bgcolor="#FFFFFF",
+            color="#000000"
             )
             stock_field = ft.TextField(
                 label="Остаток", 
                 value=str(product.stock_quantity) if product else "0", 
                 keyboard_type=ft.KeyboardType.NUMBER,
-                bgcolor=ft.Colors.GREY_700,
-                color=ft.Colors.WHITE
+bgcolor="#FFFFFF",
+            color="#000000"
             )
             discount_field = ft.TextField(
                 label="Скидка %", 
                 value=str(product.discount_percent) if product else "0", 
                 keyboard_type=ft.KeyboardType.NUMBER,
-                bgcolor=ft.Colors.GREY_700,
-                color=ft.Colors.WHITE
+bgcolor="#FFFFFF",
+            color="#000000"
             )
             
             category_dropdown = ft.Dropdown(
                 label="Категория",
                 options=[ft.dropdown.Option(key=str(c.id), text=c.name) for c in categories],
                 value=str(product.category_id) if product else (str(categories[0].id) if categories else None),
-                bgcolor=ft.Colors.GREY_700,
-                color=ft.Colors.WHITE
+bgcolor="#FFFFFF",
+            color="#000000"
             )
             
             manufacturer_dropdown = ft.Dropdown(
                 label="Производитель",
                 options=[ft.dropdown.Option(key=str(m.id), text=m.name) for m in manufacturers],
                 value=str(product.manufacturer_id) if product else (str(manufacturers[0].id) if manufacturers else None),
-                bgcolor=ft.Colors.GREY_700,
-                color=ft.Colors.WHITE
+bgcolor="#FFFFFF",
+            color="#000000"
             )
             
             supplier_form_dropdown = ft.Dropdown(
                 label="Поставщик",
                 options=[ft.dropdown.Option(key=str(s.id), text=s.name) for s in suppliers_list],
                 value=str(product.supplier_id) if product else (str(suppliers_list[0].id) if suppliers_list else None),
-                bgcolor=ft.Colors.GREY_700,
-                color=ft.Colors.WHITE
+bgcolor="#FFFFFF",
+            color="#000000"
             )
             
             # Поле загрузки изображения
@@ -609,12 +638,12 @@ def create_products_view(page: ft.Page, app_state):
                                     "Редактировать товар" if product_id else "Добавить товар",
                                     size=20,
                                     weight=ft.FontWeight.BOLD,
-                                    color=ft.Colors.WHITE,
+                                    color="#000000",
                                     font_family="Times New Roman"
                                 ),
                                 ft.IconButton(
                                     icon=ft.Icons.CLOSE,
-                                    icon_color=ft.Colors.WHITE,
+                                    icon_color="#000000",
                                     on_click=close_dialog,
                                     tooltip="Закрыть"
                                 )
@@ -635,7 +664,7 @@ def create_products_view(page: ft.Page, app_state):
                                     stock_field,
                                     discount_field,
                                     ft.Divider(),
-                                    ft.Text("Изображение товара:", size=14, weight=ft.FontWeight.BOLD, font_family="Times New Roman", color=ft.Colors.WHITE),
+                                    ft.Text("Изображение товара:", size=14, weight=ft.FontWeight.BOLD, font_family="Times New Roman", color="#000000"),
                                     image_preview,
                                     image_picker_button,
                                 ],
@@ -647,7 +676,7 @@ def create_products_view(page: ft.Page, app_state):
                         ),
                         ft.Row(
                             [
-                                ft.TextButton("Отмена", on_click=close_dialog, style=ft.ButtonStyle(color=ft.Colors.WHITE)),
+                                ft.TextButton("Отмена", on_click=close_dialog, style=ft.ButtonStyle(color="#000000")),
                                 ft.ElevatedButton("Сохранить", on_click=save_product, bgcolor="#00FA9A", color="#000000")
                             ],
                             alignment=ft.MainAxisAlignment.END
@@ -656,7 +685,7 @@ def create_products_view(page: ft.Page, app_state):
                     spacing=10,
                     tight=True
                 ),
-                bgcolor=ft.Colors.GREY_900,
+                bgcolor="#7FFF00",
                 padding=20,
                 width=550,
                 border_radius=10,
@@ -750,12 +779,12 @@ def create_products_view(page: ft.Page, app_state):
         confirm_dialog = ft.AlertDialog(
             title=ft.Text("Подтверждение"),
             on_dismiss=lambda e: close_dialog(e) if confirm_dialog in page.overlay else None,
-            bgcolor=ft.Colors.GREY_900,
-            title_style=ft.TextStyle(color=ft.Colors.WHITE),
-            content=ft.Text("Вы уверены, что хотите удалить этот товар?", color=ft.Colors.WHITE),
+            bgcolor="#7FFF00",
+            title_style=ft.TextStyle(color="#000000", font_family="Times New Roman"),
+            content=ft.Text("Вы уверены, что хотите удалить этот товар?", color="#000000"),
             actions=[
-                ft.TextButton("Отмена", on_click=close_dialog, style=ft.ButtonStyle(color=ft.Colors.WHITE)),
-                ft.ElevatedButton("Удалить", on_click=confirm_delete, bgcolor=ft.Colors.RED, color=ft.Colors.WHITE)
+                ft.TextButton("Отмена", on_click=close_dialog, style=ft.ButtonStyle(color="#000000")),
+                ft.ElevatedButton("Удалить", on_click=confirm_delete, bgcolor=ft.Colors.RED, color="#000000")
             ]
         )
         
@@ -934,4 +963,5 @@ def create_products_view(page: ft.Page, app_state):
         )
     
     return view
+
 

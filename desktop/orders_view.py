@@ -28,20 +28,12 @@ def create_orders_view(page: ft.Page, app_state):
     # Получение данных
     orders_list = get_orders(db)
     
-    # Таблица заказов
-    orders_table = ft.DataTable(
-        columns=[
-            ft.DataColumn(ft.Text("ID", font_family="Times New Roman")),
-            ft.DataColumn(ft.Text("Артикул", font_family="Times New Roman")),
-            ft.DataColumn(ft.Text("Статус", font_family="Times New Roman")),
-            ft.DataColumn(ft.Text("Адрес выдачи", font_family="Times New Roman")),
-            ft.DataColumn(ft.Text("Дата заказа", font_family="Times New Roman")),
-            ft.DataColumn(ft.Text("Дата доставки", font_family="Times New Roman")),
-            ft.DataColumn(ft.Text("Действия", font_family="Times New Roman")),
-        ],
-        rows=[],
-        heading_row_color="#00FA9A",  # Акцентирование внимания
-        heading_row_height=50,
+    # Контейнер для карточек заказов
+    orders_container = ft.Column(
+        controls=[],
+        spacing=10,
+        scroll=ft.ScrollMode.AUTO,
+        expand=True
     )
     
     def refresh_orders():
@@ -49,40 +41,95 @@ def create_orders_view(page: ft.Page, app_state):
         refresh_db = SessionLocal()
         try:
             orders_list = get_orders(refresh_db)
+            orders_container.controls.clear()
             
-            orders_table.rows = []
             for order in orders_list:
-                actions = []
-                if role == "admin":
-                    actions.append(
-                        ft.IconButton(
-                            icon=ft.Icons.EDIT,
-                            tooltip="Редактировать",
-                            on_click=lambda e, o_id=order.id: edit_order(o_id)
+                # Создаем замыкание для корректной работы обработчиков
+                def create_order_card(order_data):
+                    # Действия для администратора
+                    actions_row = ft.Row(controls=[], spacing=5)
+                    if role == "admin":
+                        actions_row.controls.append(
+                            ft.IconButton(
+                                icon=ft.Icons.EDIT,
+                                tooltip="Редактировать",
+                                icon_color=ft.Colors.BLUE,
+                                on_click=lambda e: edit_order(order_data.id)
+                            )
                         )
-                    )
-                    actions.append(
-                        ft.IconButton(
-                            icon=ft.Icons.DELETE,
-                            tooltip="Удалить",
-                            icon_color=ft.Colors.RED,
-                            on_click=lambda e, o_id=order.id: delete_order_confirm(o_id)
+                        actions_row.controls.append(
+                            ft.IconButton(
+                                icon=ft.Icons.DELETE,
+                                tooltip="Удалить",
+                                icon_color=ft.Colors.RED,
+                                on_click=lambda e: delete_order_confirm(order_data.id)
+                            )
                         )
-                    )
                 
-                orders_table.rows.append(
-                    ft.DataRow(
-                        cells=[
-                            ft.DataCell(ft.Text(str(order.id), font_family="Times New Roman")),
-                            ft.DataCell(ft.Text(order.article, font_family="Times New Roman")),
-                            ft.DataCell(ft.Text(order.status, font_family="Times New Roman")),
-                            ft.DataCell(ft.Text(order.pickup_address[:50] + "..." if len(order.pickup_address) > 50 else order.pickup_address, font_family="Times New Roman")),
-                            ft.DataCell(ft.Text(order.order_date.strftime("%d.%m.%Y %H:%M") if order.order_date else "", font_family="Times New Roman")),
-                            ft.DataCell(ft.Text(order.delivery_date.strftime("%d.%m.%Y %H:%M") if order.delivery_date else "", font_family="Times New Roman")),
-                            ft.DataCell(ft.Row(actions)),
-                        ]
+                    # Создаем карточку заказа согласно макету
+                    order_card = ft.Container(
+                        content=ft.Row(
+                            [
+                                # Левая часть - информация о заказе
+                                ft.Container(
+                                    content=ft.Column(
+                                        [
+                                            ft.Text("Артикул заказа", size=11, weight=ft.FontWeight.BOLD),
+                                            ft.Text(order_data.article, size=12),
+                                            ft.Text("Статус заказа", size=11, weight=ft.FontWeight.BOLD),
+                                            ft.Text(order_data.status, size=12),
+                                            ft.Text("Адрес пункта выдачи (текст)", size=11, weight=ft.FontWeight.BOLD),
+                                            ft.Text(order_data.pickup_address, size=12, max_lines=3),
+                                            ft.Text("Дата заказа", size=11, weight=ft.FontWeight.BOLD),
+                                            ft.Text(order_data.order_date.strftime("%d.%m.%Y") if order_data.order_date else "", size=12),
+                                            actions_row if role == "admin" else ft.Container()
+                                        ],
+                                        spacing=3
+                                    ),
+                                    expand=True,
+                                    padding=10,
+                                    border=ft.border.all(2, "#000000")
+                                ),
+                                # Правая часть - дата доставки
+                                ft.Container(
+                                    content=ft.Column(
+                                        [
+                                            ft.Text(
+                                                "Дата доставки",
+                                                size=11,
+                                                weight=ft.FontWeight.BOLD,
+                                                font_family="Times New Roman",
+                                                text_align=ft.TextAlign.CENTER
+                                            ),
+                                            ft.Container(height=20),
+                                            ft.Text(
+                                                order_data.delivery_date.strftime("%d.%m.%Y") if order_data.delivery_date else "Не указана",
+                                                size=14,
+                                                font_family="Times New Roman",
+                                                text_align=ft.TextAlign.CENTER
+                                            )
+                                        ],
+                                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                                        alignment=ft.MainAxisAlignment.START
+                                    ),
+                                    width=150,
+                                    padding=10,
+                                    border=ft.border.all(2, "#000000")
+                                )
+                            ],
+                            spacing=0
+                        ),
+                        border=ft.border.all(2, "#000000"),
+                        padding=0,
+                        on_click=lambda e, order_id=order_data.id: edit_order(order_id) if role == "admin" else None
                     )
-                )
+                    
+                    return order_card
+                
+                # Создаем и добавляем карточку
+                card = create_order_card(order)
+                orders_container.controls.append(card)
+            
             page.update()
         except Exception as e:
             print(f"Ошибка при обновлении заказов: {e}")
@@ -117,8 +164,9 @@ def create_orders_view(page: ft.Page, app_state):
         article_field = ft.TextField(
             label="Артикул",
             value=order.article if order else "",
-            bgcolor=ft.Colors.GREY_700,
-            color=ft.Colors.WHITE
+            bgcolor="#FFFFFF",
+            color="#000000",
+            border_color="#00FA9A"
         )
         
         status_dropdown = ft.Dropdown(
@@ -130,30 +178,34 @@ def create_orders_view(page: ft.Page, app_state):
                 ft.dropdown.Option(key="отменен", text="Отменен"),
             ],
             value=order.status if order else "новый",
-            bgcolor=ft.Colors.GREY_700,
-            color=ft.Colors.WHITE
+            bgcolor="#FFFFFF",
+            color="#000000",
+            border_color="#00FA9A"
         )
         
         pickup_field = ft.TextField(
             label="Адрес выдачи",
             value=order.pickup_address if order else "",
             multiline=True,
-            bgcolor=ft.Colors.GREY_700,
-            color=ft.Colors.WHITE
+            bgcolor="#FFFFFF",
+            color="#000000",
+            border_color="#00FA9A"
         )
         
         order_date_field = ft.TextField(
             label="Дата заказа",
             value=order.order_date.strftime("%Y-%m-%dT%H:%M") if order and order.order_date else datetime.now().strftime("%Y-%m-%dT%H:%M"),
-            bgcolor=ft.Colors.GREY_700,
-            color=ft.Colors.WHITE
+            bgcolor="#FFFFFF",
+            color="#000000",
+            border_color="#00FA9A"
         )
         
         delivery_date_field = ft.TextField(
             label="Дата доставки",
             value=order.delivery_date.strftime("%Y-%m-%dT%H:%M") if order and order.delivery_date else "",
-            bgcolor=ft.Colors.GREY_700,
-            color=ft.Colors.WHITE
+            bgcolor="#FFFFFF",
+            color="#000000",
+            border_color="#00FA9A"
         )
         
         # Объявляем переменную для хранения ссылки на dialog_stack
@@ -417,7 +469,7 @@ def create_orders_view(page: ft.Page, app_state):
                     ),
                     ft.Row(
                         [
-                            ft.TextButton("Отмена", on_click=close_dialog, style=ft.ButtonStyle(color=ft.Colors.WHITE)),
+                            ft.TextButton("Отмена", on_click=close_dialog, style=ft.ButtonStyle(color="#000000")),
                             ft.ElevatedButton(
                                 "Сохранить", 
                                 on_click=save_order,
@@ -431,7 +483,7 @@ def create_orders_view(page: ft.Page, app_state):
                 spacing=10,
                 tight=True
             ),
-            bgcolor=ft.Colors.GREY_900,
+            bgcolor="#7FFF00",
             padding=20,
             width=550,
             border_radius=10,
@@ -500,13 +552,13 @@ def create_orders_view(page: ft.Page, app_state):
                 page.update()
         
         confirm_dialog = ft.AlertDialog(
-            title=ft.Text("Подтверждение", color=ft.Colors.WHITE),
+            title=ft.Text("Подтверждение", color="#000000"),
             on_dismiss=lambda e: close_dialog(e) if confirm_dialog in page.overlay else None,
-            bgcolor=ft.Colors.GREY_900,
-            content=ft.Text("Вы уверены, что хотите удалить этот заказ?", color=ft.Colors.WHITE),
+            bgcolor="#7FFF00",
+            content=ft.Text("Вы уверены, что хотите удалить этот заказ?", color="#000000"),
             actions=[
-                ft.TextButton("Отмена", on_click=close_dialog, style=ft.ButtonStyle(color=ft.Colors.WHITE)),
-                ft.ElevatedButton("Удалить", on_click=confirm_delete, bgcolor=ft.Colors.RED, color=ft.Colors.WHITE)
+                ft.TextButton("Отмена", on_click=close_dialog, style=ft.ButtonStyle(color="#000000")),
+                ft.ElevatedButton("Удалить", on_click=confirm_delete, bgcolor=ft.Colors.RED, color="#000000")
             ]
         )
         
@@ -551,7 +603,7 @@ def create_orders_view(page: ft.Page, app_state):
         route="/orders",
         controls=[
             ft.AppBar(
-                title=ft.Text("Заказы", font_family="Times New Roman"),
+                title=ft.Text("Заказы"),
                 bgcolor="#00FA9A",  # Акцентирование внимания
                 actions=[
                     ft.IconButton(
@@ -621,14 +673,7 @@ def create_orders_view(page: ft.Page, app_state):
                                 )
                             ]
                         ),
-                        ft.Container(
-                            content=orders_table,
-                            expand=True,
-                            border=ft.border.all(1, "#CCCCCC"),
-                            border_radius=5,
-                            padding=10,
-                            bgcolor="#FFFFFF"  # Основной фон
-                        )
+                        orders_container
                     ],
                     expand=True,
                     spacing=10

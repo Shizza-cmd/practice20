@@ -264,6 +264,15 @@ def create_import_view(page: ft.Page, app_state):
                 page.update()
                 return
             
+            # Загружаем адреса пунктов выдачи
+            pickup_points_file = os.path.join("pril", "Пункты выдачи_import.xlsx")
+            pickup_points = []
+            if os.path.exists(pickup_points_file):
+                pickup_df = pd.read_excel(pickup_points_file)
+                # Адреса в первой колонке, индекс соответствует номеру
+                pickup_points = pickup_df.iloc[:, 0].tolist()
+                print(f"Загружено {len(pickup_points)} пунктов выдачи")
+            
             try:
                 df = pd.read_excel(orders_file)
                 imported_count = 0
@@ -287,9 +296,13 @@ def create_import_view(page: ft.Page, app_state):
                         
                         # Адрес пункта выдачи - может быть номером или полным адресом
                         pickup_address_raw = str(row.get('Адрес пункта выдачи', '')).strip()
-                        # Если это число, используем его как есть, иначе полный адрес
+                        # Если это число, получаем полный адрес из списка пунктов выдачи
                         if pickup_address_raw.isdigit():
-                            pickup_address = pickup_address_raw
+                            pickup_index = int(pickup_address_raw) - 1  # Нумерация с 1
+                            if 0 <= pickup_index < len(pickup_points):
+                                pickup_address = pickup_points[pickup_index]
+                            else:
+                                pickup_address = f"Пункт выдачи #{pickup_address_raw}"
                         else:
                             pickup_address = pickup_address_raw
                         

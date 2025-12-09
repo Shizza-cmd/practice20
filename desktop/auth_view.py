@@ -125,7 +125,7 @@ def create_login_view(page: ft.Page, app_state):
                         ft.Text(
                             "Система управления продажей обуви",
                             size=16,
-                            color=ft.Colors.GREY,
+                            color="#666666",
                             font_family="Times New Roman"
                         ),
                         ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
