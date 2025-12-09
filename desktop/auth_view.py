@@ -64,9 +64,36 @@ def create_login_view(page: ft.Page, app_state):
             error_text.visible = True
             page.update()
     
+    def on_guest_click(e):
+        """Обработчик просмотра как гость"""
+        # Создаем временного пользователя-гостя
+        from app.models import User
+        guest_user = User(
+            id=0,
+            login="guest",
+            password_hash="",
+            full_name="Гость",
+            role="guest"
+        )
+        app_state.set_user(guest_user)
+        
+        # Переход на экран товаров
+        from desktop.products_view import create_products_view
+        page.views.clear()
+        page.views.append(create_products_view(page, app_state))
+        page.update()
+    
     login_button = ft.ElevatedButton(
         text="Войти",
         on_click=on_login_click,
+        width=300,
+        bgcolor="#00FA9A",  # Акцентирование внимания
+        color="#000000"
+    )
+    
+    guest_button = ft.TextButton(
+        text="Просмотр как гость",
+        on_click=on_guest_click,
         width=300
     )
     
@@ -92,18 +119,21 @@ def create_login_view(page: ft.Page, app_state):
                         ft.Text(
                             "ООО «Обувь»",
                             size=32,
-                            weight=ft.FontWeight.BOLD
+                            weight=ft.FontWeight.BOLD,
+                            font_family="Times New Roman"
                         ),
                         ft.Text(
                             "Система управления продажей обуви",
                             size=16,
-                            color=ft.Colors.GREY
+                            color=ft.Colors.GREY,
+                            font_family="Times New Roman"
                         ),
                         ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
                         login_field,
                         password_field,
                         error_text,
-                        login_button
+                        login_button,
+                        guest_button
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     spacing=10

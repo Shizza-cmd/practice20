@@ -34,6 +34,8 @@ def main(page: ft.Page):
     page.window.height = 800
     page.window.min_width = 800
     page.window.min_height = 600
+    page.theme = ft.Theme(font_family="Times New Roman")
+    page.bgcolor = "#FFFFFF"  # Основной фон
     
     # Инициализация состояния
     app_state = AppState()

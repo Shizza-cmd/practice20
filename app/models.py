@@ -75,7 +75,7 @@ class Order(Base):
     __tablename__ = "orders"
 
     id = Column(Integer, primary_key=True, index=True)
-    article = Column(String(100), unique=True, nullable=False, index=True)
+    article = Column(String(100), nullable=False, index=True)  # Убрали unique=True - разные заказы могут содержать одинаковые товары
     status = Column(String(50), nullable=False)  # новый, в обработке, выполнен, отменен
     pickup_address = Column(Text, nullable=False)
     order_date = Column(DateTime(timezone=True), nullable=False)

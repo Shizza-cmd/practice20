@@ -31,16 +31,16 @@ def create_orders_view(page: ft.Page, app_state):
     # Таблица заказов
     orders_table = ft.DataTable(
         columns=[
-            ft.DataColumn(ft.Text("ID")),
-            ft.DataColumn(ft.Text("Артикул")),
-            ft.DataColumn(ft.Text("Статус")),
-            ft.DataColumn(ft.Text("Адрес выдачи")),
-            ft.DataColumn(ft.Text("Дата заказа")),
-            ft.DataColumn(ft.Text("Дата доставки")),
-            ft.DataColumn(ft.Text("Действия")),
+            ft.DataColumn(ft.Text("ID", font_family="Times New Roman")),
+            ft.DataColumn(ft.Text("Артикул", font_family="Times New Roman")),
+            ft.DataColumn(ft.Text("Статус", font_family="Times New Roman")),
+            ft.DataColumn(ft.Text("Адрес выдачи", font_family="Times New Roman")),
+            ft.DataColumn(ft.Text("Дата заказа", font_family="Times New Roman")),
+            ft.DataColumn(ft.Text("Дата доставки", font_family="Times New Roman")),
+            ft.DataColumn(ft.Text("Действия", font_family="Times New Roman")),
         ],
         rows=[],
-        heading_row_color=ft.Colors.BLUE_700,
+        heading_row_color="#00FA9A",  # Акцентирование внимания
         heading_row_height=50,
     )
     
@@ -73,12 +73,12 @@ def create_orders_view(page: ft.Page, app_state):
                 orders_table.rows.append(
                     ft.DataRow(
                         cells=[
-                            ft.DataCell(ft.Text(str(order.id))),
-                            ft.DataCell(ft.Text(order.article)),
-                            ft.DataCell(ft.Text(order.status)),
-                            ft.DataCell(ft.Text(order.pickup_address[:50] + "..." if len(order.pickup_address) > 50 else order.pickup_address)),
-                            ft.DataCell(ft.Text(order.order_date.strftime("%d.%m.%Y %H:%M") if order.order_date else "")),
-                            ft.DataCell(ft.Text(order.delivery_date.strftime("%d.%m.%Y %H:%M") if order.delivery_date else "")),
+                            ft.DataCell(ft.Text(str(order.id), font_family="Times New Roman")),
+                            ft.DataCell(ft.Text(order.article, font_family="Times New Roman")),
+                            ft.DataCell(ft.Text(order.status, font_family="Times New Roman")),
+                            ft.DataCell(ft.Text(order.pickup_address[:50] + "..." if len(order.pickup_address) > 50 else order.pickup_address, font_family="Times New Roman")),
+                            ft.DataCell(ft.Text(order.order_date.strftime("%d.%m.%Y %H:%M") if order.order_date else "", font_family="Times New Roman")),
+                            ft.DataCell(ft.Text(order.delivery_date.strftime("%d.%m.%Y %H:%M") if order.delivery_date else "", font_family="Times New Roman")),
                             ft.DataCell(ft.Row(actions)),
                         ]
                     )
@@ -529,6 +529,13 @@ def create_orders_view(page: ft.Page, app_state):
         page.views.append(create_login_view(page, app_state))
         page.update()
     
+    def on_back(e):
+        """Обработчик кнопки Назад"""
+        from desktop.products_view import create_products_view
+        page.views.clear()
+        page.views.append(create_products_view(page, app_state))
+        page.update()
+    
     def navigate_to_products(e):
         """Переход к товарам"""
         from desktop.products_view import create_products_view
@@ -544,13 +551,20 @@ def create_orders_view(page: ft.Page, app_state):
         route="/orders",
         controls=[
             ft.AppBar(
-                title=ft.Text("Заказы"),
-                bgcolor=ft.Colors.BLUE_700,
+                title=ft.Text("Заказы", font_family="Times New Roman"),
+                bgcolor="#00FA9A",  # Акцентирование внимания
                 actions=[
+                    ft.IconButton(
+                        icon=ft.Icons.ARROW_BACK,
+                        tooltip="Назад",
+                        on_click=on_back,
+                        icon_color="#000000"
+                    ),
                     ft.IconButton(
                         icon=ft.Icons.REFRESH,
                         tooltip="Обновить",
-                        on_click=lambda e: refresh_orders()
+                        on_click=lambda e: refresh_orders(),
+                        icon_color="#000000"
                     ),
                     ft.PopupMenuButton(
                         items=[
@@ -559,13 +573,25 @@ def create_orders_view(page: ft.Page, app_state):
                                 icon=ft.Icons.INVENTORY,
                                 on_click=navigate_to_products
                             ),
+                            *([ft.PopupMenuItem(
+                                text="Импорт данных",
+                                icon=ft.Icons.UPLOAD,
+                                on_click=lambda e: (
+                                    page.views.clear(),
+                                    page.views.append(
+                                        __import__("desktop.import_view", fromlist=["create_import_view"]).create_import_view(page, app_state)
+                                    ),
+                                    page.update()
+                                )
+                            )] if role == "admin" else []),
                             ft.PopupMenuItem(),
                             ft.PopupMenuItem(
                                 text="Выход",
                                 icon=ft.Icons.LOGOUT,
                                 on_click=on_logout
                             )
-                        ]
+                        ],
+                        icon_color="#000000"
                     )
                 ]
             ),
@@ -577,7 +603,8 @@ def create_orders_view(page: ft.Page, app_state):
                                 ft.Text(
                                     f"Пользователь: {app_state.current_user.full_name}",
                                     size=16,
-                                    weight=ft.FontWeight.BOLD
+                                    weight=ft.FontWeight.BOLD,
+                                    font_family="Times New Roman"
                                 )
                             ],
                             alignment=ft.MainAxisAlignment.SPACE_BETWEEN
@@ -588,16 +615,19 @@ def create_orders_view(page: ft.Page, app_state):
                                     "Добавить заказ",
                                     icon=ft.Icons.ADD,
                                     on_click=add_order,
-                                    visible=role == "admin"
+                                    visible=role == "admin",
+                                    bgcolor="#00FA9A",  # Акцентирование внимания
+                                    color="#000000"
                                 )
                             ]
                         ),
                         ft.Container(
                             content=orders_table,
                             expand=True,
-                            border=ft.border.all(1, ft.Colors.GREY_300),
+                            border=ft.border.all(1, "#CCCCCC"),
                             border_radius=5,
-                            padding=10
+                            padding=10,
+                            bgcolor="#FFFFFF"  # Основной фон
                         )
                     ],
                     expand=True,

@@ -32,7 +32,15 @@ def import_users_from_excel(filepath: str):
                 login = str(row.get('Логин', '')).strip()
                 password = str(row.get('Пароль', '')).strip()
                 full_name = str(row.get('ФИО', '')).strip()
-                role = str(row.get('Роль', 'client')).strip().lower()
+                # Обработка роли из поля "Роль сотрудника"
+                role_str = str(row.get('Роль сотрудника', row.get('Роль', 'client'))).strip().lower()
+                # Преобразование ролей
+                if 'администратор' in role_str or 'admin' in role_str:
+                    role = 'admin'
+                elif 'менеджер' in role_str or 'manager' in role_str:
+                    role = 'manager'
+                else:
+                    role = 'client'
                 
                 if not login or not password:
                     continue
@@ -71,7 +79,8 @@ def import_products_from_excel(filepath: str):
         for _, row in df.iterrows():
             try:
                 # Получение или создание категории
-                category_name = str(row.get('Категория', '')).strip()
+                # Используем поле "Категория товара" (Женская обувь, Мужская обувь)
+                category_name = str(row.get('Категория товара', row.get('Категория', ''))).strip()
                 if not category_name:
                     continue
                 category = db.query(Category).filter(Category.name == category_name).first()
@@ -100,29 +109,62 @@ def import_products_from_excel(filepath: str):
                     db.add(supplier)
                     db.flush()
                 
+                # Обработка цены
+                price_val = row.get('Цена', 0)
+                try:
+                    if pd.isna(price_val):
+                        price_val = 0
+                    else:
+                        price_val = float(price_val)
+                except:
+                    price_val = 0
+                
+                # Обработка количества
+                stock_val = row.get('Кол-во на складе', row.get('Количество на складе', 0))
+                try:
+                    if pd.isna(stock_val):
+                        stock_val = 0
+                    else:
+                        stock_val = int(float(stock_val))  # Сначала float, потом int для обработки "0.0"
+                except:
+                    stock_val = 0
+                
+                # Обработка скидки
+                discount_val = row.get('Действующая скидка', row.get('Скидка', 0))
+                try:
+                    if pd.isna(discount_val):
+                        discount_val = 0
+                    else:
+                        discount_val = float(discount_val)
+                except:
+                    discount_val = 0
+                
                 # Создание товара
                 product = Product(
-                    name=str(row.get('Наименование', '')).strip(),
+                    name=str(row.get('Наименование товара', row.get('Наименование', ''))).strip(),
                     category_id=category.id,
-                    description=str(row.get('Описание', '')).strip(),
+                    description=str(row.get('Описание товара', row.get('Описание', ''))).strip() or None,
                     manufacturer_id=manufacturer.id,
                     supplier_id=supplier.id,
-                    price=float(row.get('Цена', 0)),
-                    unit=str(row.get('Единица измерения', 'шт')).strip(),
-                    stock_quantity=int(row.get('Количество на складе', 0)),
-                    discount_percent=float(row.get('Скидка', 0))
+                    price=price_val,
+                    unit=str(row.get('Единица измерения', 'шт')).strip() or 'шт',
+                    stock_quantity=stock_val,
+                    discount_percent=discount_val
                 )
                 
                 # Обработка изображения
                 image_num = str(row.get('Фото', '')).strip()
-                if image_num and image_num.isdigit():
-                    image_path = f"static/images/products/{image_num}.jpg"
-                    if os.path.exists(f"pril/{image_num}.jpg"):
-                        # Копируем изображение
-                        import shutil
-                        os.makedirs("app/static/images/products", exist_ok=True)
-                        shutil.copy(f"pril/{image_num}.jpg", f"app/{image_path}")
-                    product.image_path = image_path
+                if image_num:
+                    # Убираем расширение если есть
+                    image_num = image_num.replace('.jpg', '').replace('.jpeg', '').replace('.png', '')
+                    if image_num.isdigit():
+                        image_path = f"static/images/products/{image_num}.jpg"
+                        if os.path.exists(f"pril/{image_num}.jpg"):
+                            # Копируем изображение
+                            import shutil
+                            os.makedirs("app/static/images/products", exist_ok=True)
+                            shutil.copy(f"pril/{image_num}.jpg", f"app/{image_path}")
+                        product.image_path = image_path
                 
                 db.add(product)
                 print(f"Добавлен товар: {product.name}")
@@ -150,18 +192,42 @@ def import_orders_from_excel(filepath: str):
         
         for _, row in df.iterrows():
             try:
-                article = str(row.get('Артикул', '')).strip()
-                status = str(row.get('Статус', 'новый')).strip()
-                pickup_address = str(row.get('Адрес пункта выдачи', '')).strip()
+                # Используем поле "Артикул заказа" или "Артикул"
+                article = str(row.get('Артикул заказа', row.get('Артикул', ''))).strip()
+                status = str(row.get('Статус заказа', row.get('Статус', 'новый'))).strip().lower()
+                # Преобразуем статус
+                if 'завершен' in status or 'выполнен' in status:
+                    status = 'выполнен'
+                elif 'новый' in status:
+                    status = 'новый'
+                elif 'обработке' in status:
+                    status = 'в обработке'
+                elif 'отменен' in status:
+                    status = 'отменен'
+                else:
+                    status = 'новый'
+                
+                # Адрес пункта выдачи - может быть номером или полным адресом
+                pickup_address_raw = str(row.get('Адрес пункта выдачи', '')).strip()
+                # Если это число, используем его как есть, иначе полный адрес
+                if pickup_address_raw.isdigit():
+                    pickup_address = pickup_address_raw
+                else:
+                    pickup_address = pickup_address_raw
                 
                 # Обработка даты заказа
                 order_date_str = row.get('Дата заказа', '')
                 if pd.isna(order_date_str):
                     order_date = datetime.now()
                 elif isinstance(order_date_str, str):
-                    try:
-                        order_date = datetime.strptime(order_date_str, '%Y-%m-%d %H:%M:%S')
-                    except:
+                    # Пробуем разные форматы дат
+                    for fmt in ['%d.%m.%Y', '%Y-%m-%d', '%d.%m.%Y %H:%M:%S', '%Y-%m-%d %H:%M:%S', '%d.%m.%Y %H:%M']:
+                        try:
+                            order_date = datetime.strptime(order_date_str, fmt)
+                            break
+                        except:
+                            continue
+                    else:
                         order_date = datetime.now()
                 else:
                     order_date = order_date_str if isinstance(order_date_str, datetime) else datetime.now()
@@ -171,16 +237,20 @@ def import_orders_from_excel(filepath: str):
                 delivery_date = None
                 if not pd.isna(delivery_date_str):
                     if isinstance(delivery_date_str, str):
-                        try:
-                            delivery_date = datetime.strptime(delivery_date_str, '%Y-%m-%d %H:%M:%S')
-                        except:
-                            pass
+                        # Пробуем разные форматы дат
+                        for fmt in ['%d.%m.%Y', '%Y-%m-%d', '%d.%m.%Y %H:%M:%S', '%Y-%m-%d %H:%M:%S', '%d.%m.%Y %H:%M']:
+                            try:
+                                delivery_date = datetime.strptime(delivery_date_str, fmt)
+                                break
+                            except:
+                                continue
                     elif isinstance(delivery_date_str, datetime):
                         delivery_date = delivery_date_str
                 
                 if not article:
                     continue
                 
+                # Артикул заказа не уникален - разные заказы могут содержать одинаковые товары
                 order = Order(
                     article=article,
                     status=status,
