@@ -14,7 +14,8 @@ def get_products(
     sort_by_stock: Optional[str] = None
 ):
     """Получение списка товаров с фильтрацией, поиском и сортировкой"""
-    query = db.query(Product).join(Category).join(Manufacturer).join(Supplier)
+    # Используем outerjoin для случаев, когда связанные данные могут отсутствовать
+    query = db.query(Product).outerjoin(Category).outerjoin(Manufacturer).outerjoin(Supplier)
 
     # Поиск по текстовым полям
     if search:
