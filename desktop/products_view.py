@@ -106,12 +106,20 @@ def create_products_view(page: ft.Page, app_state):
                     # Определяем цвет фона карточки
                     bg_color = "#FFFFFF"  # Основной фон
                     if product.discount_percent > 15:
-                        bg_color = "#2E8B57"  # Скидка >15%
+                        bg_color = "#2E8B57"  # Скидка >15% - тёмно-зелёный фон
                     elif product.stock_quantity == 0:
                         bg_color = "#E0F7FA"  # Нет на складе (голубой)
                     
                     # Определяем цвет текста
                     text_color = "#000000" if bg_color == "#FFFFFF" or bg_color == "#E0F7FA" else "#FFFFFF"
+                    
+                    # Определяем цвет текста скидки
+                    if product.discount_percent > 15:
+                        discount_text_color = "#FFFFFF"  # Белый на тёмно-зелёном фоне
+                    elif product.discount_percent > 0:
+                        discount_text_color = "#00FA9A"  # Зелёный для скидок 1-15%
+                    else:
+                        discount_text_color = text_color  # Обычный цвет если нет скидки
                     
                     # Изображение товара с заглушкой
                     if product.image_path:
@@ -270,7 +278,7 @@ def create_products_view(page: ft.Page, app_state):
                                                 f"{product.discount_percent:.0f}%",
                                                 size=28,
                                                 weight=ft.FontWeight.BOLD,
-                                                color=text_color,
+                                                color=discount_text_color,
                                                 font_family="Times New Roman",
                                                 text_align=ft.TextAlign.CENTER
                                             )
