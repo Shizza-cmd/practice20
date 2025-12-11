@@ -12,20 +12,27 @@ def create_login_view(page: ft.Page, app_state):
     login_field = ft.TextField(
         label="Логин",
         width=300,
-        autofocus=True
+        autofocus=True,
+        bgcolor="#FFFFFF",
+        color="#000000",
+        border_color="#000000"
     )
     
     password_field = ft.TextField(
         label="Пароль",
         width=300,
         password=True,
-        can_reveal_password=True
+        can_reveal_password=True,
+        bgcolor="#FFFFFF",
+        color="#000000",
+        border_color="#000000"
     )
     
     error_text = ft.Text(
         value="",
         color=ft.Colors.RED,
-        visible=False
+        visible=False,
+        font_family="Times New Roman"
     )
     
     def on_login_click(e):
@@ -42,7 +49,6 @@ def create_login_view(page: ft.Page, app_state):
         try:
             db = SessionLocal()
             try:
-                # Аутентификация без HTTPException
                 user = get_user_by_login(db, login)
                 if not user:
                     raise ValueError("Неверный логин или пароль")
@@ -51,7 +57,6 @@ def create_login_view(page: ft.Page, app_state):
                 
                 app_state.set_user(user)
                 
-                # Переход на экран товаров
                 from desktop.products_view import create_products_view
                 page.views.clear()
                 page.views.append(create_products_view(page, app_state))
@@ -66,7 +71,6 @@ def create_login_view(page: ft.Page, app_state):
     
     def on_guest_click(e):
         """Обработчик просмотра как гость"""
-        # Создаем временного пользователя-гостя
         from app.models import User
         guest_user = User(
             id=0,
@@ -77,7 +81,6 @@ def create_login_view(page: ft.Page, app_state):
         )
         app_state.set_user(guest_user)
         
-        # Переход на экран товаров
         from desktop.products_view import create_products_view
         page.views.clear()
         page.views.append(create_products_view(page, app_state))
@@ -87,14 +90,24 @@ def create_login_view(page: ft.Page, app_state):
         text="Войти",
         on_click=on_login_click,
         width=300,
-        bgcolor="#00FA9A",  # Акцентирование внимания
-        color="#000000"
+        bgcolor="#00FA9A",
+        color="#000000",
+        style=ft.ButtonStyle(
+            shape=ft.RoundedRectangleBorder(radius=5),
+            side=ft.BorderSide(2, "#000000")
+        )
     )
     
-    guest_button = ft.TextButton(
+    guest_button = ft.ElevatedButton(
         text="Просмотр как гость",
         on_click=on_guest_click,
-        width=300
+        width=300,
+        bgcolor="#00FA9A",
+        color="#000000",
+        style=ft.ButtonStyle(
+            shape=ft.RoundedRectangleBorder(radius=5),
+            side=ft.BorderSide(2, "#000000")
+        )
     )
     
     # Обработка Enter
@@ -104,34 +117,48 @@ def create_login_view(page: ft.Page, app_state):
     
     page.on_keyboard_event = on_keyboard
     
+    # Заголовок с зеленым фоном
+    header = ft.Container(
+        content=ft.Text(
+            "ООО Обувь",
+            size=24,
+            weight=ft.FontWeight.BOLD,
+            color="#000000",
+            font_family="Times New Roman",
+            text_align=ft.TextAlign.CENTER
+        ),
+        bgcolor="#00FF00",
+        padding=15,
+        width=350,
+        alignment=ft.alignment.center,
+        border=ft.border.all(2, "#000000")
+    )
+    
     view = ft.View(
         route="/",
         controls=[
             ft.Container(
                 content=ft.Column(
                     [
+                        header,
+                        ft.Container(height=20),
                         ft.Image(
                             src="app/static/images/Icon.png",
                             width=100,
                             height=100,
-                            error_content=ft.Icon(ft.Icons.SHOPPING_BAG, size=100)
-                        ),
-                        ft.Text(
-                            "ООО «Обувь»",
-                            size=32,
-                            weight=ft.FontWeight.BOLD,
-                            font_family="Times New Roman"
+                            error_content=ft.Icon(ft.Icons.SHOPPING_BAG, size=100, color="#00FA9A")
                         ),
                         ft.Text(
                             "Система управления продажей обуви",
-                            size=16,
-                            color="#666666",
+                            size=14,
+                            color="#000000",
                             font_family="Times New Roman"
                         ),
-                        ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
+                        ft.Container(height=20),
                         login_field,
                         password_field,
                         error_text,
+                        ft.Container(height=10),
                         login_button,
                         guest_button
                     ],
@@ -139,12 +166,13 @@ def create_login_view(page: ft.Page, app_state):
                     spacing=10
                 ),
                 alignment=ft.alignment.center,
-                expand=True
+                expand=True,
+                bgcolor="#FFFFFF"
             )
         ],
         vertical_alignment=ft.MainAxisAlignment.CENTER,
-        horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        bgcolor="#FFFFFF"
     )
     
     return view
-

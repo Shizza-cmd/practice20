@@ -32,42 +32,52 @@ def create_products_view(page: ft.Page, app_state):
         products = []
         suppliers = []
     
-    # Элементы управления
+    # Элементы управления фильтров
     search_field = ft.TextField(
         label="Поиск",
-        width=300,
+        width=200,
+        text_size=12,
         visible=role in ["manager", "admin"],
-        on_change=lambda e: refresh_products()  # Поиск в реальном времени
+        on_change=lambda e: refresh_products(),
+        bgcolor="#FFFFFF",
+        border_color="#000000"
     )
     
     supplier_dropdown = ft.Dropdown(
         label="Поставщик",
         width=200,
+        text_size=12,
         visible=role in ["manager", "admin"],
         options=[ft.dropdown.Option(key="", text="Все поставщики")] + [
             ft.dropdown.Option(key=str(s.id), text=s.name)
             for s in suppliers
         ],
-        on_change=lambda e: refresh_products()  # Фильтрация в реальном времени
+        on_change=lambda e: refresh_products(),
+        bgcolor="#FFFFFF",
+        border_color="#000000"
     )
     
     sort_dropdown = ft.Dropdown(
         label="Сортировка",
         width=200,
+        text_size=12,
         visible=role in ["manager", "admin"],
         options=[
             ft.dropdown.Option(key="", text="Без сортировки"),
             ft.dropdown.Option(key="asc", text="По возрастанию остатка"),
             ft.dropdown.Option(key="desc", text="По убыванию остатка")
         ],
-        on_change=lambda e: refresh_products()  # Сортировка в реальном времени
+        on_change=lambda e: refresh_products(),
+        bgcolor="#FFFFFF",
+        border_color="#000000"
     )
     
     # Контейнер для карточек товаров
     products_container = ft.Column(
         controls=[],
         scroll=ft.ScrollMode.AUTO,
-        spacing=10
+        spacing=10,
+        expand=True
     )
     
     def refresh_products():
@@ -75,11 +85,9 @@ def create_products_view(page: ft.Page, app_state):
         refresh_db = SessionLocal()
         try:
             search = search_field.value if search_field.visible and search_field.value else None
-            # Проверяем, что выбрано не "Все поставщики"
             supplier_id = None
             if supplier_dropdown.visible and supplier_dropdown.value:
                 value = supplier_dropdown.value.strip()
-                # Проверяем, что это не пустая строка и не "Все поставщики"
                 if value and value != "" and value != "Все поставщики":
                     try:
                         supplier_id = int(value)
@@ -94,208 +102,181 @@ def create_products_view(page: ft.Page, app_state):
                 sort_by_stock=sort_by_stock
             )
             
-            # Обрабатываем данные ДО закрытия соединения
-            products_container.controls = []
+            products_container.controls.clear()
+            
+            if not products_list:
+                products_container.controls.append(
+                    ft.Container(
+                        content=ft.Text(
+                            "Товары не найдены",
+                            size=16,
+                            color="#666666",
+                            font_family="Times New Roman"
+                        ),
+                        padding=20,
+                        alignment=ft.alignment.center
+                    )
+                )
+                page.update()
+                return
+            
             for product in products_list:
                 try:
-                    # Получаем данные связанных объектов пока соединение открыто
                     category_name = product.category.name if product.category else "Не указана"
                     manufacturer_name = product.manufacturer.name if product.manufacturer else "Не указан"
                     supplier_name = product.supplier.name if product.supplier else "Не указан"
                     
-                    # Определяем цвет фона карточки
-                    bg_color = "#FFFFFF"  # Основной фон
-                    if product.discount_percent > 15:
-                        bg_color = "#2E8B57"  # Скидка >15% - тёмно-зелёный фон
-                    elif product.stock_quantity == 0:
-                        bg_color = "#E0F7FA"  # Нет на складе (голубой)
-                    
-                    # Определяем цвет текста
-                    text_color = "#000000" if bg_color == "#FFFFFF" or bg_color == "#E0F7FA" else "#FFFFFF"
-                    
-                    # Определяем цвет текста скидки
-                    if product.discount_percent > 15:
-                        discount_text_color = "#FFFFFF"  # Белый на тёмно-зелёном фоне
-                    elif product.discount_percent > 0:
-                        discount_text_color = "#00FA9A"  # Зелёный для скидок 1-15%
-                    else:
-                        discount_text_color = text_color  # Обычный цвет если нет скидки
-                    
-                    # Изображение товара с заглушкой
+                    # Изображение товара
                     if product.image_path:
                         image_path = f"app/{product.image_path}"
                     else:
                         image_path = "app/static/images/picture.png"
                     
                     image_widget = ft.Container(
-                        width=150,
-                        height=150,
+                        width=120,
+                        height=120,
                         content=ft.Image(
                             src=image_path,
                             fit=ft.ImageFit.CONTAIN,
                             error_content=ft.Image(src="app/static/images/picture.png", fit=ft.ImageFit.CONTAIN)
                         ),
-                        alignment=ft.alignment.center
+                        alignment=ft.alignment.center,
+                        border=ft.border.all(1, "#000000")
                     )
                     
                     # Цена с учетом скидки
                     final_price = product.price * (1 - product.discount_percent / 100)
-                    price_widget = ft.Column(
-                        controls=[],
-                        spacing=2
-                    )
+                    price_row = ft.Row(controls=[], spacing=5)
+                    
                     if product.discount_percent > 0:
-                        # Старая цена перечеркнута красным
-                        price_widget.controls.append(
+                        price_row.controls.append(
                             ft.Text(
-                                spans=[
-                                    ft.TextSpan(
-                                        f"{product.price:.2f} ₽",
-                                        style=ft.TextStyle(
-                                            decoration=ft.TextDecoration.LINE_THROUGH,
-                                            color="#FF0000",
-                                            size=14,
-                                            font_family="Times New Roman"
-                                        )
-                                    )
-                                ]
+                                f"{product.price:.0f} руб.",
+                                size=12,
+                                color="#FF0000",
+                                style=ft.TextStyle(decoration=ft.TextDecoration.LINE_THROUGH),
+                                font_family="Times New Roman"
                             )
                         )
-                        # Новая цена черным
-                        price_widget.controls.append(
+                        price_row.controls.append(
                             ft.Text(
-                                f"{final_price:.2f} ₽",
-                                size=16,
-                                color=text_color,
+                                f"{final_price:.0f} руб.",
+                                size=14,
                                 weight=ft.FontWeight.BOLD,
+                                color="#000000",
                                 font_family="Times New Roman"
                             )
                         )
                     else:
-                        price_widget.controls.append(
+                        price_row.controls.append(
                             ft.Text(
-                                f"{product.price:.2f} ₽",
-                                size=16,
-                                color=text_color,
+                                f"{product.price:.0f} руб.",
+                                size=14,
                                 weight=ft.FontWeight.BOLD,
+                                color="#000000",
                                 font_family="Times New Roman"
                             )
                         )
                     
-                    # Действия для администратора
-                    actions_row = ft.Row(controls=[], spacing=5)
-                    if role == "admin":
-                        actions_row.controls.append(
-                            ft.IconButton(
-                                icon=ft.Icons.EDIT,
-                                tooltip="Редактировать",
-                                icon_color=text_color,
-                                on_click=lambda e, p_id=product.id: edit_product(p_id)
-                            )
-                        )
-                        actions_row.controls.append(
-                            ft.IconButton(
-                                icon=ft.Icons.DELETE,
-                                tooltip="Удалить",
-                                icon_color="#FF0000",
-                                on_click=lambda e, p_id=product.id: delete_product_confirm(p_id)
-                            )
-                        )
+                    # Информация о товаре (центральная часть)
+                    info_column = ft.Column(
+                        [
+                            ft.Text(
+                                f"{category_name} | {product.name}",
+                                size=14,
+                                weight=ft.FontWeight.BOLD,
+                                color="#000000",
+                                font_family="Times New Roman"
+                            ),
+                            ft.Text(
+                                f"Описание: {product.description or 'Нет описания'}",
+                                size=11,
+                                color="#000000",
+                                font_family="Times New Roman",
+                                max_lines=2
+                            ),
+                            ft.Text(
+                                f"Производитель: {manufacturer_name}",
+                                size=11,
+                                color="#000000",
+                                font_family="Times New Roman"
+                            ),
+                            ft.Text(
+                                f"Поставщик: {supplier_name}",
+                                size=11,
+                                color="#000000",
+                                font_family="Times New Roman"
+                            ),
+                            price_row,
+                            ft.Text(
+                                f"Ед. изм.: {product.unit}",
+                                size=11,
+                                color="#000000",
+                                font_family="Times New Roman"
+                            ),
+                            ft.Text(
+                                f"Количество на складе: {product.stock_quantity}",
+                                size=11,
+                                color="#000000",
+                                font_family="Times New Roman"
+                            ),
+                        ],
+                        spacing=2,
+                        expand=True
+                    )
                     
-                    # Создаем карточку товара согласно макету
+                    # Блок скидки справа (цвет зависит от процента)
+                    discount_bg_color = "#2E8B57" if product.discount_percent > 15 else "#00FF00"
+                    
+                    discount_block = ft.Container(
+                        content=ft.Column(
+                            [
+                                ft.Text(
+                                    "Скидка",
+                                    size=14,
+                                    weight=ft.FontWeight.BOLD,
+                                    color="#000000",
+                                    font_family="Times New Roman",
+                                    text_align=ft.TextAlign.CENTER
+                                ),
+                                ft.Text(
+                                    f"{product.discount_percent:.0f}%",
+                                    size=24,
+                                    weight=ft.FontWeight.BOLD,
+                                    color="#000000",
+                                    font_family="Times New Roman",
+                                    text_align=ft.TextAlign.CENTER
+                                )
+                            ],
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            alignment=ft.MainAxisAlignment.CENTER,
+                            spacing=5
+                        ),
+                        width=100,
+                        height=120,
+                        bgcolor=discount_bg_color,
+                        border=ft.border.all(2, "#000000"),
+                        alignment=ft.alignment.center
+                    )
+                    
+                    # Карточка товара
                     product_card = ft.Container(
                         content=ft.Row(
                             [
-                                # Левая часть - фото (квадратная область)
+                                image_widget,
                                 ft.Container(
-                                    content=image_widget,
-                                    width=150,
-                                    height=150,
-                                    border=ft.border.all(2, "#000000"),
-                                    padding=5
-                                ),
-                                # Средняя часть - информация о товаре
-                                ft.Container(
-                                    content=ft.Column(
-                                        [
-                                            # Заголовок: Категория товара | Наименование товара
-                                            ft.Text(
-                                                f"Категория товара | Наименование товара",
-                                                size=11,
-                                                weight=ft.FontWeight.BOLD,
-                                                color=text_color,
-                                                font_family="Times New Roman"
-                                            ),
-                                            ft.Text(
-                                                f"{category_name} | {product.name}",
-                                                size=14,
-                                                weight=ft.FontWeight.BOLD,
-                                                color=text_color,
-                                                font_family="Times New Roman"
-                                            ),
-                                            ft.Text(f"Описание товара:", size=11, weight=ft.FontWeight.BOLD, color=text_color, font_family="Times New Roman"),
-                                            ft.Text(f"{product.description or 'Нет описания'}", size=12, color=text_color, font_family="Times New Roman"),
-                                            ft.Text(f"Производитель:", size=11, weight=ft.FontWeight.BOLD, color=text_color, font_family="Times New Roman"),
-                                            ft.Text(f"{manufacturer_name}", size=12, color=text_color, font_family="Times New Roman"),
-                                            ft.Text(f"Поставщик:", size=11, weight=ft.FontWeight.BOLD, color=text_color, font_family="Times New Roman"),
-                                            ft.Text(f"{supplier_name}", size=12, color=text_color, font_family="Times New Roman"),
-                                            ft.Text(f"Цена:", size=11, weight=ft.FontWeight.BOLD, color=text_color, font_family="Times New Roman"),
-                                            price_widget,
-                                            ft.Text(f"Единица измерения:", size=11, weight=ft.FontWeight.BOLD, color=text_color, font_family="Times New Roman"),
-                                            ft.Text(f"{product.unit}", size=12, color=text_color, font_family="Times New Roman"),
-                                            ft.Text(f"Количество на складе:", size=11, weight=ft.FontWeight.BOLD, color=text_color, font_family="Times New Roman"),
-                                            ft.Text(f"{product.stock_quantity}", size=12, color=text_color, font_family="Times New Roman"),
-                                            actions_row if role == "admin" else ft.Container()
-                                        ],
-                                        spacing=3,
-                                        expand=True
-                                    ),
+                                    content=info_column,
                                     expand=True,
                                     padding=10
                                 ),
-                                # Правая часть - действующая скидка (отдельный блок)
-                                ft.Container(
-                                    content=ft.Column(
-                                        [
-                                            ft.Text(
-                                                "Действующая",
-                                                size=13,
-                                                weight=ft.FontWeight.BOLD,
-                                                color=text_color,
-                                                font_family="Times New Roman",
-                                                text_align=ft.TextAlign.CENTER
-                                            ),
-                                            ft.Text(
-                                                "скидка",
-                                                size=13,
-                                                weight=ft.FontWeight.BOLD,
-                                                color=text_color,
-                                                font_family="Times New Roman",
-                                                text_align=ft.TextAlign.CENTER
-                                            ),
-                                            ft.Container(height=10),
-                                            ft.Text(
-                                                f"{product.discount_percent:.0f}%",
-                                                size=28,
-                                                weight=ft.FontWeight.BOLD,
-                                                color=discount_text_color,
-                                                font_family="Times New Roman",
-                                                text_align=ft.TextAlign.CENTER
-                                            )
-                                        ],
-                                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                        alignment=ft.MainAxisAlignment.CENTER
-                                    ),
-                                    width=120,
-                                    border=ft.border.all(2, "#000000"),
-                                    padding=10
-                                )
+                                discount_block
                             ],
-                            spacing=0
+                            spacing=0,
+                            alignment=ft.MainAxisAlignment.START
                         ),
-                        bgcolor=bg_color,
+                        bgcolor="#FFFFFF",
                         border=ft.border.all(2, "#000000"),
-                        padding=0,
+                        padding=5,
                         on_click=lambda e, p_id=product.id: edit_product(p_id) if role == "admin" else None,
                         data=product.id
                     )
@@ -306,11 +287,21 @@ def create_products_view(page: ft.Page, app_state):
                     continue
         except Exception as e:
             print(f"Ошибка при обновлении товаров: {e}")
-            page.snack_bar = ft.SnackBar(
-                content=ft.Text(f"Ошибка загрузки данных: {str(e)}"),
-                bgcolor=ft.Colors.RED
+            import traceback
+            traceback.print_exc()
+            
+            products_container.controls.clear()
+            products_container.controls.append(
+                ft.Container(
+                    content=ft.Text(
+                        f"Ошибка загрузки данных: {str(e)}",
+                        size=14,
+                        color="#FF0000",
+                        font_family="Times New Roman"
+                    ),
+                    padding=20
+                )
             )
-            page.snack_bar.open = True
         finally:
             refresh_db.close()
         
@@ -339,7 +330,6 @@ def create_products_view(page: ft.Page, app_state):
         """Открытие формы товара"""
         global _open_form_dialog
         
-        # Блокировка открытия более одного окна редактирования
         if _open_form_dialog is not None:
             page.snack_bar = ft.SnackBar(
                 content=ft.Text("Закройте текущее окно редактирования перед открытием нового"),
@@ -353,7 +343,6 @@ def create_products_view(page: ft.Page, app_state):
         try:
             product = get_product(form_db, product_id) if product_id else None
             
-            # Вычисление следующего ID при добавлении
             next_id = None
             if not product_id:
                 from app.models import Product as ProductModel
@@ -364,10 +353,9 @@ def create_products_view(page: ft.Page, app_state):
             manufacturers = get_manufacturers(form_db)
             suppliers_list = get_suppliers(form_db)
             
-            # Проверка наличия необходимых данных
             if not categories:
                 page.snack_bar = ft.SnackBar(
-                    content=ft.Text("Ошибка: нет категорий в базе данных. Сначала создайте категории."),
+                    content=ft.Text("Ошибка: нет категорий в базе данных."),
                     bgcolor=ft.Colors.RED
                 )
                 page.snack_bar.open = True
@@ -376,7 +364,7 @@ def create_products_view(page: ft.Page, app_state):
             
             if not manufacturers:
                 page.snack_bar = ft.SnackBar(
-                    content=ft.Text("Ошибка: нет производителей в базе данных. Сначала создайте производителей."),
+                    content=ft.Text("Ошибка: нет производителей в базе данных."),
                     bgcolor=ft.Colors.RED
                 )
                 page.snack_bar.open = True
@@ -385,112 +373,135 @@ def create_products_view(page: ft.Page, app_state):
             
             if not suppliers_list:
                 page.snack_bar = ft.SnackBar(
-                    content=ft.Text("Ошибка: нет поставщиков в базе данных. Сначала создайте поставщиков."),
+                    content=ft.Text("Ошибка: нет поставщиков в базе данных."),
                     bgcolor=ft.Colors.RED
                 )
                 page.snack_bar.open = True
                 page.update()
                 return
             
-            # Поле ID товара (только для чтения, только при редактировании)
-            id_field = None
-            if product_id:
-                id_field = ft.TextField(
-                    label="ID товара",
-                    value=str(product.id),
-                    read_only=True,
-bgcolor="#FFFFFF",
-            color="#000000"
-                )
+            # Поля формы
+            article_field = ft.TextField(
+                label="Артикул",
+                value=str(product.id) if product else str(next_id),
+                read_only=True,
+                bgcolor="#FFFFFF",
+                color="#000000",
+                border_color="#000000",
+                width=400
+            )
             
             name_field = ft.TextField(
-                label="Название", 
+                label="Название",
                 value=product.name if product else "",
-bgcolor="#FFFFFF",
-            color="#000000"
+                bgcolor="#FFFFFF",
+                color="#000000",
+                border_color="#000000",
+                width=400
             )
-            description_field = ft.TextField(
-                label="Описание", 
-                value=product.description if product else "", 
-                multiline=True,
-bgcolor="#FFFFFF",
-            color="#000000"
-            )
-            price_field = ft.TextField(
-                label="Цена", 
-                value=str(product.price) if product else "0", 
-                keyboard_type=ft.KeyboardType.NUMBER,
-bgcolor="#FFFFFF",
-            color="#000000"
-            )
+            
             unit_field = ft.TextField(
-                label="Единица измерения", 
+                label="Ед. изм.",
                 value=product.unit if product else "шт",
-bgcolor="#FFFFFF",
-            color="#000000"
-            )
-            stock_field = ft.TextField(
-                label="Остаток", 
-                value=str(product.stock_quantity) if product else "0", 
-                keyboard_type=ft.KeyboardType.NUMBER,
-bgcolor="#FFFFFF",
-            color="#000000"
-            )
-            discount_field = ft.TextField(
-                label="Скидка %", 
-                value=str(product.discount_percent) if product else "0", 
-                keyboard_type=ft.KeyboardType.NUMBER,
-bgcolor="#FFFFFF",
-            color="#000000"
+                bgcolor="#FFFFFF",
+                color="#000000",
+                border_color="#000000",
+                width=400
             )
             
-            category_dropdown = ft.Dropdown(
-                label="Категория",
-                options=[ft.dropdown.Option(key=str(c.id), text=c.name) for c in categories],
-                value=str(product.category_id) if product else (str(categories[0].id) if categories else None),
-bgcolor="#FFFFFF",
-            color="#000000"
-            )
-            
-            manufacturer_dropdown = ft.Dropdown(
-                label="Производитель",
-                options=[ft.dropdown.Option(key=str(m.id), text=m.name) for m in manufacturers],
-                value=str(product.manufacturer_id) if product else (str(manufacturers[0].id) if manufacturers else None),
-bgcolor="#FFFFFF",
-            color="#000000"
+            price_field = ft.TextField(
+                label="Цена",
+                value=str(product.price) if product else "0",
+                keyboard_type=ft.KeyboardType.NUMBER,
+                bgcolor="#FFFFFF",
+                color="#000000",
+                border_color="#000000",
+                width=400
             )
             
             supplier_form_dropdown = ft.Dropdown(
                 label="Поставщик",
                 options=[ft.dropdown.Option(key=str(s.id), text=s.name) for s in suppliers_list],
                 value=str(product.supplier_id) if product else (str(suppliers_list[0].id) if suppliers_list else None),
-bgcolor="#FFFFFF",
-            color="#000000"
+                bgcolor="#FFFFFF",
+                color="#000000",
+                border_color="#000000",
+                width=400
             )
             
-            # Поле загрузки изображения
+            manufacturer_dropdown = ft.Dropdown(
+                label="Производитель",
+                options=[ft.dropdown.Option(key=str(m.id), text=m.name) for m in manufacturers],
+                value=str(product.manufacturer_id) if product else (str(manufacturers[0].id) if manufacturers else None),
+                bgcolor="#FFFFFF",
+                color="#000000",
+                border_color="#000000",
+                width=400
+            )
+            
+            category_dropdown = ft.Dropdown(
+                label="Категория",
+                options=[ft.dropdown.Option(key=str(c.id), text=c.name) for c in categories],
+                value=str(product.category_id) if product else (str(categories[0].id) if categories else None),
+                bgcolor="#FFFFFF",
+                color="#000000",
+                border_color="#000000",
+                width=400
+            )
+            
+            discount_field = ft.TextField(
+                label="Скидка (%)",
+                value=str(product.discount_percent) if product else "0",
+                keyboard_type=ft.KeyboardType.NUMBER,
+                bgcolor="#FFFFFF",
+                color="#000000",
+                border_color="#000000",
+                width=400
+            )
+            
+            stock_field = ft.TextField(
+                label="Количество на складе",
+                value=str(product.stock_quantity) if product else "0",
+                keyboard_type=ft.KeyboardType.NUMBER,
+                bgcolor="#FFFFFF",
+                color="#000000",
+                border_color="#000000",
+                width=400
+            )
+            
+            description_field = ft.TextField(
+                label="Описание",
+                value=product.description if product else "",
+                multiline=True,
+                min_lines=2,
+                max_lines=4,
+                bgcolor="#FFFFFF",
+                color="#000000",
+                border_color="#000000",
+                width=400
+            )
+            
+            # Изображение
             image_file_picker = ft.FilePicker()
             page.overlay.append(image_file_picker)
             image_path_ref = [product.image_path if product else None]
+            
             image_preview = ft.Container(
-                width=300,
-                height=200,
+                width=200,
+                height=150,
                 content=ft.Image(
                     src=f"app/{product.image_path}" if product and product.image_path else "app/static/images/picture.png",
                     fit=ft.ImageFit.CONTAIN
                 ),
-                border=ft.border.all(1, "#CCCCCC"),
-                border_radius=5
+                border=ft.border.all(1, "#000000"),
+                alignment=ft.alignment.center
             )
             
             def on_image_picked(e: ft.FilePickerResultEvent):
-                """Обработчик выбора изображения"""
                 if e.files and len(e.files) > 0:
                     selected_file = e.files[0]
                     try:
-                        # Сохраняем временный путь
                         image_path_ref[0] = selected_file.path
-                        # Обновляем превью
                         image_preview.content = ft.Image(
                             src=selected_file.path,
                             fit=ft.ImageFit.CONTAIN
@@ -502,24 +513,26 @@ bgcolor="#FFFFFF",
             image_file_picker.on_result = on_image_picked
             
             def pick_image(e):
-                """Открытие диалога выбора изображения"""
                 image_file_picker.pick_files(
                     allowed_extensions=["jpg", "jpeg", "png", "gif", "bmp"],
                     dialog_title="Выберите изображение товара"
                 )
             
             image_picker_button = ft.ElevatedButton(
-                "Выбрать изображение",
+                "Выбрать фото",
                 icon=ft.Icons.IMAGE,
                 on_click=pick_image,
                 bgcolor="#00FA9A",
-                color="#000000"
+                color="#000000",
+                style=ft.ButtonStyle(
+                    shape=ft.RoundedRectangleBorder(radius=5),
+                    side=ft.BorderSide(2, "#000000")
+                )
             )
             
             def save_product(e):
                 save_db = SessionLocal()
                 try:
-                    # Валидация полей
                     if not name_field.value or not name_field.value.strip():
                         raise ValueError("Название товара обязательно")
                     if not category_dropdown.value:
@@ -535,29 +548,20 @@ bgcolor="#FFFFFF",
                     if not stock_field.value:
                         raise ValueError("Остаток обязателен")
                     
-                    # Обработка изображения
                     saved_image_path = None
                     if image_path_ref[0]:
-                        # Проверяем, является ли это новым файлом (выбранным через FilePicker)
-                        # или существующим путем из базы данных
                         is_new_file = os.path.exists(image_path_ref[0]) and not image_path_ref[0].startswith("static/")
                         
                         if is_new_file:
-                            # Новое изображение выбрано - обрабатываем его
                             try:
-                                # Создаем директорию для изображений
                                 upload_dir = "app/static/images/products"
                                 os.makedirs(upload_dir, exist_ok=True)
                                 
-                                # Определяем ID для имени файла
                                 target_id = product_id if product_id else next_id
                                 
-                                # Открываем и обрабатываем изображение
                                 img = Image.open(image_path_ref[0])
-                                # Изменяем размер до 300x200
                                 img.thumbnail((300, 200), Image.Resampling.LANCZOS)
                                 
-                                # Сохраняем изображение
                                 file_ext = os.path.splitext(image_path_ref[0])[1] or ".jpg"
                                 filename = f"product_{target_id}{file_ext}"
                                 filepath = os.path.join(upload_dir, filename)
@@ -565,7 +569,6 @@ bgcolor="#FFFFFF",
                                 
                                 saved_image_path = f"static/images/products/{filename}"
                                 
-                                # Удаляем старое изображение при редактировании
                                 if product_id and product and product.image_path:
                                     old_path = f"app/{product.image_path}"
                                     if os.path.exists(old_path):
@@ -577,7 +580,6 @@ bgcolor="#FFFFFF",
                                 print(f"Ошибка обработки изображения: {ex}")
                                 raise ValueError(f"Ошибка обработки изображения: {str(ex)}")
                         elif product_id and product:
-                            # При редактировании, если новое изображение не выбрано, оставляем старое
                             saved_image_path = product.image_path
                     
                     product_data = ProductCreate(
@@ -598,7 +600,6 @@ bgcolor="#FFFFFF",
                     else:
                         create_product(save_db, product_data, image_path=saved_image_path)
                     
-                    # Удаляем все диалоги из overlay
                     global _open_form_dialog
                     _open_form_dialog = None
                     for overlay_item in list(page.overlay):
@@ -614,7 +615,6 @@ bgcolor="#FFFFFF",
                     page.snack_bar.open = True
                     page.update()
                 except Exception as ex:
-                    # Удаляем все диалоги из overlay
                     for overlay_item in list(page.overlay):
                         if isinstance(overlay_item, (ft.AlertDialog, ft.Container, ft.Stack)):
                             page.overlay.remove(overlay_item)
@@ -628,7 +628,6 @@ bgcolor="#FFFFFF",
                     save_db.close()
             
             def close_dialog(e):
-                # Удаляем все диалоги из overlay
                 global _open_form_dialog
                 _open_form_dialog = None
                 for overlay_item in list(page.overlay):
@@ -636,101 +635,126 @@ bgcolor="#FFFFFF",
                         page.overlay.remove(overlay_item)
                 page.update()
             
-            # Создаем кастомный диалог через Container вместо AlertDialog
+            def delete_product_action(e):
+                if product_id:
+                    close_dialog(e)
+                    delete_product_confirm(product_id)
+            
+            # Кнопки внизу диалога
+            buttons_row = ft.Row(
+                [
+                    ft.ElevatedButton(
+                        "Сохранить",
+                        on_click=save_product,
+                        bgcolor="#00FA9A",
+                        color="#000000",
+                        style=ft.ButtonStyle(
+                            shape=ft.RoundedRectangleBorder(radius=5),
+                            side=ft.BorderSide(2, "#000000")
+                        )
+                    ),
+                    ft.ElevatedButton(
+                        "Отмена",
+                        on_click=close_dialog,
+                        bgcolor="#00FA9A",
+                        color="#000000",
+                        style=ft.ButtonStyle(
+                            shape=ft.RoundedRectangleBorder(radius=5),
+                            side=ft.BorderSide(2, "#000000")
+                        )
+                    ),
+                    ft.ElevatedButton(
+                        "Удалить товар",
+                        on_click=delete_product_action,
+                        bgcolor="#00FA9A",
+                        color="#000000",
+                        visible=product_id is not None,
+                        style=ft.ButtonStyle(
+                            shape=ft.RoundedRectangleBorder(radius=5),
+                            side=ft.BorderSide(2, "#000000")
+                        )
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                spacing=10
+            )
+            
+            # Диалог карточки товара
             form_dialog = ft.Container(
                 content=ft.Column(
                     [
-                        ft.Row(
-                            [
-                                ft.Text(
-                                    "Редактировать товар" if product_id else "Добавить товар",
-                                    size=20,
-                                    weight=ft.FontWeight.BOLD,
-                                    color="#000000",
-                                    font_family="Times New Roman"
-                                ),
-                                ft.IconButton(
-                                    icon=ft.Icons.CLOSE,
-                                    icon_color="#000000",
-                                    on_click=close_dialog,
-                                    tooltip="Закрыть"
-                                )
-                            ],
-                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+                        # Заголовок
+                        ft.Container(
+                            content=ft.Text(
+                                "Карточка товара",
+                                size=20,
+                                weight=ft.FontWeight.BOLD,
+                                color="#000000",
+                                font_family="Times New Roman",
+                                text_align=ft.TextAlign.CENTER
+                            ),
+                            bgcolor="#00FF00",
+                            padding=10,
+                            width=450,
+                            alignment=ft.alignment.center
                         ),
+                        # Содержимое формы
                         ft.Container(
                             content=ft.Column(
                                 [
-                                    *([id_field] if id_field else []),
+                                    article_field,
                                     name_field,
-                                    description_field,
-                                    category_dropdown,
-                                    manufacturer_dropdown,
-                                    supplier_form_dropdown,
-                                    price_field,
                                     unit_field,
-                                    stock_field,
+                                    price_field,
+                                    supplier_form_dropdown,
+                                    manufacturer_dropdown,
+                                    category_dropdown,
                                     discount_field,
-                                    ft.Divider(),
-                                    ft.Text("Изображение товара:", size=14, weight=ft.FontWeight.BOLD, font_family="Times New Roman", color="#000000"),
-                                    image_preview,
+                                    stock_field,
+                                    description_field,
+                                    ft.Container(height=10),
                                     image_picker_button,
+                                    image_preview,
                                 ],
                                 scroll=ft.ScrollMode.AUTO,
-                                spacing=10
+                                spacing=8,
+                                horizontal_alignment=ft.CrossAxisAlignment.CENTER
                             ),
-                            height=600,
-                            width=500
+                            height=450,
+                            width=430,
+                            padding=10
                         ),
-                        ft.Row(
-                            [
-                                ft.TextButton("Отмена", on_click=close_dialog, style=ft.ButtonStyle(color="#000000")),
-                                ft.ElevatedButton("Сохранить", on_click=save_product, bgcolor="#00FA9A", color="#000000")
-                            ],
-                            alignment=ft.MainAxisAlignment.END
-                        )
+                        buttons_row
                     ],
-                    spacing=10,
-                    tight=True
+                    spacing=5,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER
                 ),
-                bgcolor="#7FFF00",
-                padding=20,
-                width=550,
-                border_radius=10,
-                border=ft.border.all(2, ft.Colors.GREY_600)
+                bgcolor="#FFFFFF",
+                padding=10,
+                width=470,
+                border_radius=0,
+                border=ft.border.all(2, "#000000")
             )
             
-            # Закрываем соединение перед открытием диалога
-            # (save_product создаст свое соединение)
             form_db.close()
             
-            # Очищаем старые диалоги и открываем новый
-            # Удаляем все существующие диалоги
             for overlay_item in list(page.overlay):
                 if isinstance(overlay_item, (ft.AlertDialog, ft.Container, ft.Stack)):
                     if hasattr(overlay_item, 'open'):
                         overlay_item.open = False
                     page.overlay.remove(overlay_item)
             
-            # Позиционируем диалог по центру через Stack
             dialog_stack = ft.Stack(
                 [
                     ft.Container(
-                        content=form_dialog.content,
-                        bgcolor=form_dialog.bgcolor,
-                        padding=form_dialog.padding,
-                        width=form_dialog.width,
-                        border_radius=form_dialog.border_radius,
-                        border=form_dialog.border,
-                        left=page.width / 2 - 275,
-                        top=page.height / 2 - 300,
+                        content=form_dialog,
+                        alignment=ft.alignment.center,
+                        expand=True
                     )
                 ],
-                width=page.width,
-                height=page.height
+                expand=True
             )
             
-            # Сохраняем ссылку на открытый диалог
             _open_form_dialog = dialog_stack
             
             page.overlay.append(dialog_stack)
@@ -785,19 +809,34 @@ bgcolor="#FFFFFF",
                 page.update()
         
         confirm_dialog = ft.AlertDialog(
-            title=ft.Text("Подтверждение"),
+            title=ft.Text("Подтверждение", color="#000000"),
             on_dismiss=lambda e: close_dialog(e) if confirm_dialog in page.overlay else None,
-            bgcolor="#7FFF00",
-            title_style=ft.TextStyle(color="#000000", font_family="Times New Roman"),
+            bgcolor="#00FF00",
             content=ft.Text("Вы уверены, что хотите удалить этот товар?", color="#000000"),
             actions=[
-                ft.TextButton("Отмена", on_click=close_dialog, style=ft.ButtonStyle(color="#000000")),
-                ft.ElevatedButton("Удалить", on_click=confirm_delete, bgcolor=ft.Colors.RED, color="#000000")
+                ft.ElevatedButton(
+                    "Отмена",
+                    on_click=close_dialog,
+                    bgcolor="#00FA9A",
+                    color="#000000",
+                    style=ft.ButtonStyle(
+                        shape=ft.RoundedRectangleBorder(radius=5),
+                        side=ft.BorderSide(2, "#000000")
+                    )
+                ),
+                ft.ElevatedButton(
+                    "Удалить",
+                    on_click=confirm_delete,
+                    bgcolor="#00FA9A",
+                    color="#000000",
+                    style=ft.ButtonStyle(
+                        shape=ft.RoundedRectangleBorder(radius=5),
+                        side=ft.BorderSide(2, "#000000")
+                    )
+                )
             ]
         )
         
-        # Очищаем старые диалоги и открываем новый
-        # Удаляем все существующие диалоги
         for overlay_item in list(page.overlay):
             if isinstance(overlay_item, ft.AlertDialog):
                 overlay_item.open = False
@@ -806,10 +845,6 @@ bgcolor="#FFFFFF",
         page.overlay.append(confirm_dialog)
         confirm_dialog.open = True
         page.update()
-    
-    def on_search(e):
-        """Обработчик поиска (оставлен для совместимости, но поиск уже в реальном времени)"""
-        refresh_products()
     
     def on_back(e):
         """Обработчик кнопки Назад"""
@@ -850,126 +885,161 @@ bgcolor="#FFFFFF",
         import traceback
         traceback.print_exc()
     
-    # Создание представления
+    # Кастомный заголовок
+    header = ft.Container(
+        content=ft.Row(
+            [
+                ft.Text(
+                    "Каталог товаров",
+                    size=20,
+                    weight=ft.FontWeight.BOLD,
+                    color="#000000",
+                    font_family="Times New Roman"
+                ),
+                ft.Text(
+                    f"{app_state.current_user.full_name if app_state.current_user else 'Гость'}",
+                    size=16,
+                    color="#000000",
+                    font_family="Times New Roman"
+                )
+            ],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+        ),
+        bgcolor="#00FF00",
+        padding=15,
+        border=ft.border.all(2, "#000000")
+    )
+    
+    # Панель фильтров
+    filters_row = ft.Container(
+        content=ft.Row(
+            [
+                search_field,
+                supplier_dropdown,
+                sort_dropdown,
+            ],
+            spacing=10,
+            alignment=ft.MainAxisAlignment.START
+        ),
+        bgcolor="#FFFFFF",
+        padding=10,
+        border=ft.border.all(1, "#000000"),
+        visible=role in ["manager", "admin"]
+    )
+    
+    # Нижняя панель с кнопками
+    bottom_buttons = ft.Container(
+        content=ft.Row(
+            [
+                ft.ElevatedButton(
+                    "Назад",
+                    on_click=on_back,
+                    bgcolor="#00FA9A",
+                    color="#000000",
+                    style=ft.ButtonStyle(
+                        shape=ft.RoundedRectangleBorder(radius=5),
+                        side=ft.BorderSide(2, "#000000")
+                    )
+                ),
+                ft.ElevatedButton(
+                    "Добавить товар",
+                    on_click=add_product,
+                    visible=role == "admin",
+                    bgcolor="#00FA9A",
+                    color="#000000",
+                    style=ft.ButtonStyle(
+                        shape=ft.RoundedRectangleBorder(radius=5),
+                        side=ft.BorderSide(2, "#000000")
+                    )
+                ),
+                ft.ElevatedButton(
+                    "Заказы",
+                    on_click=navigate_to_orders,
+                    visible=role in ["manager", "admin"],
+                    bgcolor="#00FA9A",
+                    color="#000000",
+                    style=ft.ButtonStyle(
+                        shape=ft.RoundedRectangleBorder(radius=5),
+                        side=ft.BorderSide(2, "#000000")
+                    )
+                ),
+                ft.ElevatedButton(
+                    "Выход",
+                    on_click=on_logout,
+                    bgcolor="#00FA9A",
+                    color="#000000",
+                    style=ft.ButtonStyle(
+                        shape=ft.RoundedRectangleBorder(radius=5),
+                        side=ft.BorderSide(2, "#000000")
+                    )
+                ),
+            ],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            spacing=10
+        ),
+        bgcolor="#FFFFFF",
+        padding=10,
+        border=ft.border.all(1, "#000000")
+    )
+    
+    # Создание представления без AppBar
     try:
         view = ft.View(
             route="/products",
-        controls=[
-            ft.AppBar(
-                title=ft.Text("Список товаров", font_family="Times New Roman"),
-                bgcolor="#00FA9A",  # Акцентирование внимания
-                actions=[
-                    ft.IconButton(
-                        icon=ft.Icons.ARROW_BACK,
-                        tooltip="Назад",
-                        on_click=on_back,
-                        icon_color="#000000"
-                    ),
-                    ft.IconButton(
-                        icon=ft.Icons.REFRESH,
-                        tooltip="Обновить",
-                        on_click=lambda e: refresh_products(),
-                        icon_color="#000000"
-                    ),
-                    ft.PopupMenuButton(
-                        items=[
-                            *([ft.PopupMenuItem(
-                                text="Заказы",
-                                icon=ft.Icons.SHOPPING_CART,
-                                on_click=navigate_to_orders
-                            )] if role in ["manager", "admin"] else []),
-                            *([ft.PopupMenuItem(
-                                text="Импорт данных",
-                                icon=ft.Icons.UPLOAD,
-                                on_click=lambda e: (
-                                    page.views.clear(),
-                                    page.views.append(
-                                        __import__("desktop.import_view", fromlist=["create_import_view"]).create_import_view(page, app_state)
-                                    ),
-                                    page.update()
-                                )
-                            )] if role == "admin" else []),
-                            ft.PopupMenuItem(),
-                            ft.PopupMenuItem(
-                                text="Выход",
-                                icon=ft.Icons.LOGOUT,
-                                on_click=on_logout
-                            )
-                        ],
-                        icon_color="#000000"
-                    )
-                ]
-            ),
-            ft.Container(
-                content=ft.Column(
-                    [
-                        ft.Row(
-                            [
-                                ft.Text(
-                                    f"Пользователь: {app_state.current_user.full_name if app_state.current_user else 'Гость'}",
-                                    size=16,
-                                    weight=ft.FontWeight.BOLD,
-                                    font_family="Times New Roman"
-                                )
-                            ],
-                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-                        ),
-                        ft.Container(
-                            content=ft.Row(
-                                [
-                                    search_field,
-                                    supplier_dropdown,
-                                    sort_dropdown,
-                                    ft.ElevatedButton(
-                                        "Добавить товар",
-                                        icon=ft.Icons.ADD,
-                                        on_click=add_product,
-                                        visible=role == "admin",
-                                        bgcolor="#00FA9A",  # Акцентирование внимания
-                                        color="#000000"
-                                    )
-                                ],
-                                wrap=True,
-                                spacing=10
+            controls=[
+                ft.Container(
+                    content=ft.Column(
+                        [
+                            header,
+                            filters_row,
+                            ft.Container(
+                                content=products_container,
+                                expand=True,
+                                border=ft.border.all(1, "#000000"),
+                                padding=5,
+                                bgcolor="#FFFFFF"
                             ),
-                            bgcolor="#7FFF00",  # Дополнительный фон
-                            padding=15,
-                            border_radius=5,
-                            visible=role in ["manager", "admin"]
-                        ),
-                        ft.Container(
-                            content=products_container,
-                            expand=True,
-                            border=ft.border.all(1, "#CCCCCC"),
-                            border_radius=5,
-                            padding=10,
-                            bgcolor="#FFFFFF"  # Основной фон
-                        )
-                    ],
+                            bottom_buttons
+                        ],
+                        expand=True,
+                        spacing=5
+                    ),
+                    padding=10,
                     expand=True,
-                    spacing=10
-                ),
-                padding=20,
-                expand=True
-            )
-        ]
-    )
+                    bgcolor="#FFFFFF"
+                )
+            ],
+            bgcolor="#FFFFFF"
+        )
     except Exception as e:
-        print(f"Ошибка при создании view: {e}")
+        print(f"!!! КРИТИЧЕСКАЯ ОШИБКА при создании view: {e}")
         import traceback
         traceback.print_exc()
-        # Возвращаем простой view с сообщением об ошибке
         view = ft.View(
             route="/products",
             controls=[
-                ft.AppBar(title=ft.Text("Ошибка"), bgcolor=ft.Colors.RED),
                 ft.Container(
-                    content=ft.Text(f"Ошибка загрузки: {str(e)}"),
-                    padding=20
+                    content=ft.Column(
+                        [
+                            ft.Text(
+                                "Ошибка загрузки страницы",
+                                size=20,
+                                weight=ft.FontWeight.BOLD,
+                                color="#FF0000"
+                            ),
+                            ft.Text(
+                                f"Детали: {str(e)}",
+                                size=14,
+                                color="#000000"
+                            )
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER
+                    ),
+                    padding=20,
+                    alignment=ft.alignment.center
                 )
-            ]
+            ],
+            bgcolor="#FFFFFF"
         )
     
     return view
-
-
