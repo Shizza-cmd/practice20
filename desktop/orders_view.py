@@ -65,7 +65,7 @@ def create_orders_view(page: ft.Page, app_state):
                     info_column = ft.Column(
                         [
                             ft.Text(
-                                f"Артикул заказа: {order_data.id}",
+                                f"Артикул заказа: {order_data.article}",
                                 size=12,
                                 weight=ft.FontWeight.BOLD,
                                 color="#000000",
@@ -91,7 +91,7 @@ def create_orders_view(page: ft.Page, app_state):
                                 font_family="Times New Roman"
                             ),
                             ft.Text(
-                                f"Дата заказа: {order_data.code if order_data.code else order_data.id }",
+                                f"Код для получения: {order_data.code if order_data.code else order_data.id }",
                                 size=11,
                                 color="#000000",
                                 font_family="Times New Roman"
