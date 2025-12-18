@@ -152,7 +152,7 @@ def create_products_view(page: ft.Page, app_state):
                     if product.discount_percent > 0:
                         price_row.controls.append(
                             ft.Text(
-                                f"{product.price:.0f} руб.",
+                                f"Цена: {product.price:.0f}",
                                 size=12,
                                 color="#FF0000",
                                 style=ft.TextStyle(decoration=ft.TextDecoration.LINE_THROUGH),
@@ -171,7 +171,7 @@ def create_products_view(page: ft.Page, app_state):
                     else:
                         price_row.controls.append(
                             ft.Text(
-                                f"{product.price:.0f} руб.",
+                                f"Цена: {product.price:.0f} руб.",
                                 size=14,
                                 weight=ft.FontWeight.BOLD,
                                 color="#000000",
@@ -210,7 +210,7 @@ def create_products_view(page: ft.Page, app_state):
                             ),
                             price_row,
                             ft.Text(
-                                f"Ед. изм.: {product.unit}",
+                                f"Единица измерения: {product.unit}",
                                 size=11,
                                 color="#000000",
                                 font_family="Times New Roman"
@@ -233,8 +233,8 @@ def create_products_view(page: ft.Page, app_state):
                         content=ft.Column(
                             [
                                 ft.Text(
-                                    "Скидка",
-                                    size=14,
+                                    "Действующая скидка",
+                                    size=12,
                                     weight=ft.FontWeight.BOLD,
                                     color="#000000",
                                     font_family="Times New Roman",
