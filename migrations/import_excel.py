@@ -201,12 +201,12 @@ def import_orders_from_excel(filepath: str):
         
         for _, row in df.iterrows():
             try:
-                # Используем поле "Артикул заказа" или "Артикул"
-                article = str(row.get('Артикул заказа', row.get('Артикул', ''))).strip()
+                # Используем поле "Артикул заказа"
+                article = str(row.get('Артикул заказа', '')).strip()
                 status = str(row.get('Статус заказа', row.get('Статус', 'новый'))).strip().lower()
                 # Преобразуем статус
                 if 'завершен' in status or 'выполнен' in status:
-                    status = 'выполнен'
+                    status = 'завершен'
                 elif 'новый' in status:
                     status = 'новый'
                 elif 'обработке' in status:
@@ -260,16 +260,19 @@ def import_orders_from_excel(filepath: str):
                     elif isinstance(delivery_date_str, datetime):
                         delivery_date = delivery_date_str
                 
+                code = str(row.get('Код для получения', ''))
+
                 if not article:
                     continue
-                
+
                 # Артикул заказа не уникален - разные заказы могут содержать одинаковые товары
                 order = Order(
                     article=article,
                     status=status,
                     pickup_address=pickup_address,
                     order_date=order_date,
-                    delivery_date=delivery_date
+                    delivery_date=delivery_date,
+                    code=code
                 )
                 db.add(order)
                 print(f"Добавлен заказ: {article}")

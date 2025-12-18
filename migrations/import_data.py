@@ -86,7 +86,8 @@ def import_orders_from_csv(filepath: str):
                     status=row['status'],
                     pickup_address=row['pickup_address'],
                     order_date=datetime.strptime(row['order_date'], '%Y-%m-%d %H:%M:%S'),
-                    delivery_date=datetime.strptime(row['delivery_date'], '%Y-%m-%d %H:%M:%S') if row.get('delivery_date') else None
+                    delivery_date=datetime.strptime(row['delivery_date'], '%Y-%m-%d %H:%M:%S') if row.get('delivery_date') else None,
+                    code=row['code']
                 )
                 db.add(order)
                 

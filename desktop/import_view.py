@@ -338,6 +338,8 @@ def create_import_view(page: ft.Page, app_state):
                             elif isinstance(delivery_date_str, datetime):
                                 delivery_date = delivery_date_str
                         
+                        code = str(row.get('Код для получения', ''))
+
                         if not article:
                             continue
                         
@@ -347,7 +349,8 @@ def create_import_view(page: ft.Page, app_state):
                             status=status,
                             pickup_address=pickup_address,
                             order_date=order_date,
-                            delivery_date=delivery_date
+                            delivery_date=delivery_date,
+                            code=code
                         )
                         db.add(order)
                         imported_count += 1

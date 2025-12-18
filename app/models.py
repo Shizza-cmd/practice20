@@ -80,6 +80,7 @@ class Order(Base):
     pickup_address = Column(Text, nullable=False)
     order_date = Column(DateTime(timezone=True), nullable=False)
     delivery_date = Column(DateTime(timezone=True))
+    code = Column(String(10), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

@@ -90,6 +90,12 @@ def create_orders_view(page: ft.Page, app_state):
                                 color="#000000",
                                 font_family="Times New Roman"
                             ),
+                            ft.Text(
+                                f"Дата заказа: {order_data.code if order_data.code else order_data.id }",
+                                size=11,
+                                color="#000000",
+                                font_family="Times New Roman"
+                            ),
                         ],
                         spacing=3,
                         expand=True
