@@ -47,8 +47,21 @@ def import_products_from_csv(filepath: str):
                     db.add(supplier)
                     db.flush()
                 
+                # Получение артикула или генерация
+                article_val = row.get('article', '').strip()
+                if not article_val:
+                    import uuid
+                    article_val = f"CSV-{uuid.uuid4().hex[:8].upper()}"
+                
+                # Проверка уникальности
+                existing = db.query(Product).filter(Product.article == article_val).first()
+                if existing:
+                    print(f"Товар с артикулом {article_val} уже существует, пропускаем")
+                    continue
+                
                 # Создание товара
                 product = Product(
+                    article=article_val,
                     name=row['name'],
                     category_id=category.id,
                     description=row.get('description', ''),
@@ -81,13 +94,20 @@ def import_orders_from_csv(filepath: str):
         reader = csv.DictReader(f)
         for row in reader:
             try:
+                # Получение или генерация кода
+                code_val = row.get('code', '').strip()
+                if not code_val:
+                    import random
+                    import string
+                    code_val = ''.join(random.choices(string.digits, k=6))
+                
                 order = Order(
                     article=row['article'],
                     status=row['status'],
                     pickup_address=row['pickup_address'],
                     order_date=datetime.strptime(row['order_date'], '%Y-%m-%d %H:%M:%S'),
                     delivery_date=datetime.strptime(row['delivery_date'], '%Y-%m-%d %H:%M:%S') if row.get('delivery_date') else None,
-                    code=row['code']
+                    code=code_val
                 )
                 db.add(order)
                 

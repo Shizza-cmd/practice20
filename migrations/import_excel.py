@@ -76,6 +76,8 @@ def import_products_from_excel(filepath: str):
         df = pd.read_excel(filepath)
         print(f"Найдено {len(df)} записей товаров")
         
+        product_counter = 0  # Счётчик для генерации артикулов
+        
         for _, row in df.iterrows():
             try:
                 # Получение или создание категории
@@ -139,8 +141,22 @@ def import_products_from_excel(filepath: str):
                 except:
                     discount_val = 0
                 
+                # Получение артикула из Excel или генерация
+                article_val = str(row.get('Артикул', row.get('Артикул товара', ''))).strip()
+                if not article_val:
+                    # Генерируем артикул если не указан
+                    product_counter += 1
+                    article_val = f"ART-{product_counter:04d}"
+                
+                # Проверка уникальности артикула
+                existing_product = db.query(Product).filter(Product.article == article_val).first()
+                if existing_product:
+                    print(f"Товар с артикулом {article_val} уже существует, пропускаем")
+                    continue
+                
                 # Создание товара
                 product = Product(
+                    article=article_val,
                     name=str(row.get('Наименование товара', row.get('Наименование', ''))).strip(),
                     category_id=category.id,
                     description=str(row.get('Описание товара', row.get('Описание', ''))).strip() or None,
@@ -260,7 +276,12 @@ def import_orders_from_excel(filepath: str):
                     elif isinstance(delivery_date_str, datetime):
                         delivery_date = delivery_date_str
                 
-                code = str(row.get('Код для получения', ''))
+                code = str(row.get('Код для получения', '')).strip()
+                # Генерируем код если не указан
+                if not code:
+                    import random
+                    import string
+                    code = ''.join(random.choices(string.digits, k=6))
 
                 if not article:
                     continue
