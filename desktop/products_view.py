@@ -260,6 +260,9 @@ def create_products_view(page: ft.Page, app_state):
                         alignment=ft.alignment.center
                     )
                     
+                    # Цвет фона: синий если остаток 0
+                    card_bgcolor = "#90CAF9" if product.stock_quantity == 0 else "#FFFFFF"
+                    
                     # Карточка товара
                     product_card = ft.Container(
                         content=ft.Row(
@@ -275,7 +278,7 @@ def create_products_view(page: ft.Page, app_state):
                             spacing=0,
                             alignment=ft.MainAxisAlignment.START
                         ),
-                        bgcolor="#FFFFFF",
+                        bgcolor=card_bgcolor,
                         border=ft.border.all(2, "#000000"),
                         padding=5,
                         on_click=lambda e, p_id=product.id: edit_product(p_id) if role == "admin" else None,
