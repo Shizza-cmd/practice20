@@ -65,6 +65,7 @@ class SupplierResponse(SupplierBase):
 
 class ProductBase(BaseModel):
     """Базовая схема товара"""
+    article: str  # Артикул товара
     name: str
     category_id: int
     description: Optional[str] = None
@@ -81,8 +82,9 @@ class ProductCreate(ProductBase):
     pass
 
 
-class ProductUpdate(ProductBase):
+class ProductUpdate(BaseModel):
     """Схема обновления товара"""
+    article: Optional[str] = None
     name: Optional[str] = None
     category_id: Optional[int] = None
     description: Optional[str] = None

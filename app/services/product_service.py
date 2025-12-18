@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
-from app.models import Product, Category, Manufacturer, Supplier
+from app.models import Product, Category, Manufacturer, Supplier, PickupPoint
 from app.schemas import ProductCreate, ProductUpdate
 from typing import Optional
 
@@ -106,4 +106,14 @@ def get_manufacturers(db: Session):
 def get_suppliers(db: Session):
     """Получение всех поставщиков"""
     return db.query(Supplier).all()
+
+
+def get_pickup_points(db: Session):
+    """Получение всех пунктов выдачи"""
+    return db.query(PickupPoint).all()
+
+
+def get_product_by_article(db: Session, article: str) -> Product | None:
+    """Получение товара по артикулу"""
+    return db.query(Product).filter(Product.article == article).first()
 

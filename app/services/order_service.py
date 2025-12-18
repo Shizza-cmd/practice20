@@ -2,6 +2,13 @@ from sqlalchemy.orm import Session
 from app.models import Order, OrderItem
 from app.schemas import OrderCreate, OrderUpdate
 from typing import Optional
+import random
+import string
+
+
+def generate_order_code() -> str:
+    """Генерация 6-значного кода заказа"""
+    return ''.join(random.choices(string.digits, k=6))
 
 
 def get_orders(db: Session, skip: int = 0, limit: int = 100):
@@ -21,7 +28,8 @@ def create_order(db: Session, order: OrderCreate) -> Order:
         status=order.status,
         pickup_address=order.pickup_address,
         order_date=order.order_date,
-        delivery_date=order.delivery_date
+        delivery_date=order.delivery_date,
+        code=generate_order_code()
     )
     db.add(db_order)
     db.flush()

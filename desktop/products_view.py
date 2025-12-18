@@ -5,7 +5,8 @@ import flet as ft
 from app.database import SessionLocal
 from app.services.product_service import (
     get_products, get_product, create_product, update_product,
-    delete_product, get_categories, get_manufacturers, get_suppliers
+    delete_product, get_categories, get_manufacturers, get_suppliers,
+    get_product_by_article
 )
 from app.schemas import ProductCreate, ProductUpdate
 from desktop.notifications import show_error, show_warning, show_info
@@ -362,8 +363,7 @@ def create_products_view(page: ft.Page, app_state):
             # Поля формы
             article_field = ft.TextField(
                 label="Артикул",
-                value=str(product.id) if product else str(next_id),
-                read_only=True,
+                value=product.article if product else "",
                 bgcolor="#FFFFFF",
                 color="#000000",
                 border_color="#000000",
@@ -536,32 +536,50 @@ def create_products_view(page: ft.Page, app_state):
                                 upload_dir = "app/static/images/products"
                                 os.makedirs(upload_dir, exist_ok=True)
                                 
-                                target_id = product_id if product_id else next_id
+                                # Сначала удаляем старое изображение (если есть)
+                                old_image_to_delete = None
+                                if product_id and product and product.image_path:
+                                    old_image_to_delete = f"app/{product.image_path}"
+                                
+                                # Используем UUID для уникального имени файла
+                                file_ext = os.path.splitext(image_path_ref[0])[1].lower() or ".jpg"
+                                unique_filename = f"{uuid.uuid4()}{file_ext}"
+                                filepath = os.path.join(upload_dir, unique_filename)
                                 
                                 img = Image.open(image_path_ref[0])
                                 img.thumbnail((300, 200), Image.Resampling.LANCZOS)
-                                
-                                file_ext = os.path.splitext(image_path_ref[0])[1] or ".jpg"
-                                filename = f"product_{target_id}{file_ext}"
-                                filepath = os.path.join(upload_dir, filename)
                                 img.save(filepath)
                                 
-                                saved_image_path = f"static/images/products/{filename}"
+                                saved_image_path = f"static/images/products/{unique_filename}"
                                 
-                                if product_id and product and product.image_path:
-                                    old_path = f"app/{product.image_path}"
-                                    if os.path.exists(old_path):
-                                        try:
-                                            os.remove(old_path)
-                                        except Exception as ex:
-                                            print(f"Ошибка удаления старого изображения: {ex}")
+                                # Удаляем старое изображение после успешного сохранения нового
+                                if old_image_to_delete and os.path.exists(old_image_to_delete):
+                                    try:
+                                        os.remove(old_image_to_delete)
+                                    except Exception as ex:
+                                        print(f"Ошибка удаления старого изображения: {ex}")
                             except Exception as ex:
                                 print(f"Ошибка обработки изображения: {ex}")
+                                import traceback
+                                traceback.print_exc()
                                 raise ValueError(f"Ошибка обработки изображения: {str(ex)}")
                         elif product_id and product:
                             saved_image_path = product.image_path
                     
+                    # Валидация артикула
+                    if not article_field.value or not article_field.value.strip():
+                        raise ValueError("Артикул обязателен")
+                    
+                    # Проверка уникальности артикула
+                    new_article = article_field.value.strip()
+                    existing_product = get_product_by_article(save_db, new_article)
+                    if existing_product:
+                        # При редактировании - разрешаем если это тот же товар
+                        if not product_id or existing_product.id != product_id:
+                            raise ValueError(f"Товар с артикулом '{new_article}' уже существует")
+                    
                     product_data = ProductCreate(
+                        article=article_field.value.strip(),
                         name=name_field.value.strip(),
                         category_id=int(category_dropdown.value),
                         description=description_field.value.strip() if description_field.value else None,

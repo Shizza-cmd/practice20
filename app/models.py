@@ -51,6 +51,7 @@ class Product(Base):
     __tablename__ = "products"
 
     id = Column(Integer, primary_key=True, index=True)
+    article = Column(String(50), unique=True, nullable=False, index=True)  # Артикул товара
     name = Column(String(200), nullable=False)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
     description = Column(Text)
@@ -100,3 +101,10 @@ class OrderItem(Base):
     order = relationship("Order", back_populates="items")
     product = relationship("Product", back_populates="order_items")
 
+
+class PickupPoint(Base):
+    """Модель пункта выдачи"""
+    __tablename__ = "pickup_points"
+
+    id = Column(Integer, primary_key=True, index=True)
+    address = Column(String(500), unique=True, nullable=False)

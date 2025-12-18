@@ -4,7 +4,7 @@
 import flet as ft
 from app.database import SessionLocal
 from app.services.order_service import get_orders, get_order, create_order, update_order, delete_order
-from app.services.product_service import get_products
+from app.services.product_service import get_products, get_pickup_points, get_product_by_article
 from app.schemas import OrderCreate, OrderUpdate
 from desktop.notifications import show_error, show_warning, show_info
 from datetime import datetime
@@ -191,6 +191,163 @@ def create_orders_view(page: ft.Page, app_state):
         try:
             order = get_order(form_db, order_id) if order_id else None
             products_list = get_products(form_db)
+            pickup_points_list = get_pickup_points(form_db)
+            
+            # Список выбранных товаров: [{'article': 'XXX', 'quantity': N}, ...]
+            selected_items = []
+            
+            # Парсинг существующих товаров из заказа (формат: "ART1, QTY1, ART2, QTY2")
+            if order and order.article:
+                parts = [p.strip() for p in order.article.split(',')]
+                for i in range(0, len(parts) - 1, 2):
+                    try:
+                        article = parts[i]
+                        qty = int(parts[i + 1])
+                        selected_items.append({'article': article, 'quantity': qty})
+                    except (ValueError, IndexError):
+                        pass
+            
+            # Контейнер для отображения выбранных товаров (со скроллом)
+            items_list_container = ft.Column(
+                controls=[], 
+                spacing=2,
+                scroll=ft.ScrollMode.AUTO
+            )
+            
+            def refresh_items_list():
+                """Обновить отображение списка товаров"""
+                items_list_container.controls.clear()
+                if not selected_items:
+                    items_list_container.controls.append(
+                        ft.Text(
+                            "Нет добавленных товаров",
+                            size=11,
+                            color="#666666",
+                            italic=True
+                        )
+                    )
+                else:
+                    for idx, item in enumerate(selected_items):
+                        # Найти название товара
+                        product = next((p for p in products_list if p.article == item['article']), None)
+                        product_name = product.name if product else "?"
+                        
+                        item_row = ft.Container(
+                            content=ft.Row(
+                                [
+                                    ft.Container(
+                                        content=ft.Text(
+                                            f"{idx + 1}",
+                                            size=10,
+                                            color="#FFFFFF",
+                                            weight=ft.FontWeight.BOLD
+                                        ),
+                                        width=20,
+                                        height=20,
+                                        bgcolor="#00AA00",
+                                        border_radius=10,
+                                        alignment=ft.alignment.center
+                                    ),
+                                    ft.Text(
+                                        f"{item['article']} - {product_name}",
+                                        size=11,
+                                        color="#000000",
+                                        expand=True
+                                    ),
+                                    ft.Text(
+                                        f"× {item['quantity']}",
+                                        size=11,
+                                        color="#000000",
+                                        weight=ft.FontWeight.BOLD
+                                    ),
+                                    ft.IconButton(
+                                        icon=ft.Icons.DELETE,
+                                        icon_size=16,
+                                        icon_color="#FF0000",
+                                        tooltip="Удалить",
+                                        on_click=lambda e, i=idx: remove_item(i)
+                                    )
+                                ],
+                                spacing=8,
+                                vertical_alignment=ft.CrossAxisAlignment.CENTER
+                            ),
+                            padding=ft.padding.symmetric(vertical=4, horizontal=5),
+                            border=ft.border.only(bottom=ft.BorderSide(1, "#DDDDDD")) if idx < len(selected_items) - 1 else None
+                        )
+                        items_list_container.controls.append(item_row)
+                page.update()
+            
+            def remove_item(idx):
+                """Удалить товар из списка"""
+                if 0 <= idx < len(selected_items):
+                    selected_items.pop(idx)
+                    refresh_items_list()
+            
+            # Dropdown для выбора артикула
+            article_dropdown = ft.Dropdown(
+                label="Артикул товара",
+                options=[
+                    ft.dropdown.Option(
+                        key=p.article, 
+                        text=f"{p.article} - {p.name}"
+                    ) for p in products_list
+                ],
+                bgcolor="#FFFFFF",
+                color="#000000",
+                border_color="#000000",
+                width=200
+            )
+            
+            # Поле количества
+            quantity_field = ft.TextField(
+                label="Кол-во",
+                value="1",
+                keyboard_type=ft.KeyboardType.NUMBER,
+                bgcolor="#FFFFFF",
+                color="#000000",
+                border_color="#000000",
+                width=70
+            )
+            
+            def add_item_to_order(e):
+                """Добавить товар в заказ"""
+                if not article_dropdown.value:
+                    show_warning(page, "Выберите артикул товара")
+                    return
+                if not quantity_field.value or int(quantity_field.value) < 1:
+                    show_warning(page, "Укажите количество (≥1)")
+                    return
+                
+                # Проверка на дубликат
+                existing = next((item for item in selected_items if item['article'] == article_dropdown.value), None)
+                if existing:
+                    existing['quantity'] += int(quantity_field.value)
+                else:
+                    selected_items.append({
+                        'article': article_dropdown.value,
+                        'quantity': int(quantity_field.value)
+                    })
+                
+                article_dropdown.value = None
+                quantity_field.value = "1"
+                refresh_items_list()
+            
+            # Строка добавления товара
+            add_item_row = ft.Row(
+                [
+                    article_dropdown,
+                    quantity_field,
+                    ft.IconButton(
+                        icon=ft.Icons.ADD_CIRCLE,
+                        icon_size=24,
+                        icon_color="#00AA00",
+                        tooltip="Добавить товар",
+                        on_click=add_item_to_order
+                    )
+                ],
+                spacing=5,
+                alignment=ft.MainAxisAlignment.CENTER
+            )
             
             # Поля формы
             status_dropdown = ft.Dropdown(
@@ -208,9 +365,16 @@ def create_orders_view(page: ft.Page, app_state):
                 width=350
             )
             
-            pickup_field = ft.TextField(
-                label="Адрес пункта выдачи",
-                value=order.pickup_address if order else "",
+            # Dropdown для выбора пункта выдачи
+            pickup_dropdown = ft.Dropdown(
+                label="Адрес пункта выдачи *",
+                options=[
+                    ft.dropdown.Option(
+                        key=pp.address, 
+                        text=pp.address
+                    ) for pp in pickup_points_list
+                ],
+                value=order.pickup_address if order else None,
                 bgcolor="#FFFFFF",
                 color="#000000",
                 border_color="#000000",
@@ -235,145 +399,36 @@ def create_orders_view(page: ft.Page, app_state):
                 width=350
             )
             
-            # Товары заказа
-            order_items_container = ft.Column(
-                controls=[],
-                spacing=5
-            )
-            
-            selected_products = []
-            
-            def refresh_order_items():
-                order_items_container.controls.clear()
-                if not selected_products:
-                    order_items_container.controls.append(
-                        ft.Text(
-                            "Нет добавленных товаров",
-                            size=12,
-                            color="#666666",
-                            font_family="Times New Roman",
-                            italic=True
-                        )
-                    )
-                else:
-                    for idx, item in enumerate(selected_products):
-                        item_row = ft.Row(
-                            [
-                                ft.Text(
-                                    f"{item['name']} x {item['quantity']}",
-                                    size=12,
-                                    color="#000000",
-                                    font_family="Times New Roman",
-                                    expand=True
-                                ),
-                                ft.IconButton(
-                                    icon=ft.Icons.DELETE,
-                                    icon_size=16,
-                                    icon_color="#FF0000",
-                                    tooltip="Удалить",
-                                    on_click=lambda e, i=idx: remove_product(i)
-                                )
-                            ],
-                            spacing=5
-                        )
-                        order_items_container.controls.append(item_row)
-                page.update()
-            
-            def remove_product(idx):
-                if 0 <= idx < len(selected_products):
-                    selected_products.pop(idx)
-                    refresh_order_items()
-            
-            # Диалог добавления товара
-            def show_add_product_dialog(e):
-                product_dropdown = ft.Dropdown(
-                    label="Товар",
-                    options=[ft.dropdown.Option(key=str(p.id), text=p.name) for p in products_list],
-                    width=300,
-                    bgcolor="#FFFFFF",
-                    color="#000000",
-                    border_color="#000000"
-                )
-                
-                quantity_field = ft.TextField(
-                    label="Количество",
-                    value="1",
-                    keyboard_type=ft.KeyboardType.NUMBER,
-                    width=100,
-                    bgcolor="#FFFFFF",
-                    color="#000000",
-                    border_color="#000000"
-                )
-                
-                def add_product_to_order(e):
-                    if product_dropdown.value and quantity_field.value:
-                        product = next((p for p in products_list if str(p.id) == product_dropdown.value), None)
-                        if product:
-                            selected_products.append({
-                                'id': product.id,
-                                'name': product.name,
-                                'quantity': int(quantity_field.value)
-                            })
-                            refresh_order_items()
-                    add_product_dialog.open = False
-                    page.update()
-                
-                def close_add_dialog(e):
-                    add_product_dialog.open = False
-                    page.update()
-                
-                add_product_dialog = ft.AlertDialog(
-                    title=ft.Text("Добавить товар", color="#000000"),
-                    bgcolor="#00FF00",
-                    content=ft.Column(
-                        [
-                            product_dropdown,
-                            quantity_field
-                        ],
-                        spacing=10,
-                        tight=True
-                    ),
-                    actions=[
-                        ft.ElevatedButton(
-                            "Отмена",
-                            on_click=close_add_dialog,
-                            bgcolor="#00FA9A",
-                            color="#000000",
-                            style=ft.ButtonStyle(
-                                shape=ft.RoundedRectangleBorder(radius=5),
-                                side=ft.BorderSide(2, "#000000")
-                            )
-                        ),
-                        ft.ElevatedButton(
-                            "Добавить",
-                            on_click=add_product_to_order,
-                            bgcolor="#00FA9A",
-                            color="#000000",
-                            style=ft.ButtonStyle(
-                                shape=ft.RoundedRectangleBorder(radius=5),
-                                side=ft.BorderSide(2, "#000000")
-                            )
-                        )
-                    ]
-                )
-                
-                page.overlay.append(add_product_dialog)
-                add_product_dialog.open = True
-                page.update()
-            
-            refresh_order_items()
+            # Инициализация списка товаров
+            refresh_items_list()
             
             dialog_stack_ref = [None]
             
             def save_order(e):
                 save_db = SessionLocal()
                 try:
+                    # Валидация обязательных полей
+                    if not selected_items:
+                        raise ValueError("Добавьте хотя бы один товар")
                     if not status_dropdown.value:
                         raise ValueError("Статус обязателен")
-                    if not pickup_field.value or not pickup_field.value.strip():
+                    if not pickup_dropdown.value:
                         raise ValueError("Адрес пункта выдачи обязателен")
                     if not order_date_field.value:
                         raise ValueError("Дата заказа обязательна")
+                    
+                    # Проверка существования всех товаров
+                    for item in selected_items:
+                        product = get_product_by_article(save_db, item['article'])
+                        if not product:
+                            raise ValueError(f"Товар с артикулом {item['article']} не найден")
+                    
+                    # Формирование строки артикулов: "ART1, QTY1, ART2, QTY2"
+                    article_parts = []
+                    for item in selected_items:
+                        article_parts.append(item['article'])
+                        article_parts.append(str(item['quantity']))
+                    article_string = ', '.join(article_parts)
                     
                     # Парсинг дат
                     order_date = datetime.strptime(order_date_field.value, "%Y-%m-%d")
@@ -384,9 +439,9 @@ def create_orders_view(page: ft.Page, app_state):
                     
                     if order_id:
                         order_data = OrderUpdate(
-                            article=str(order_id),
+                            article=article_string,
                             status=status_dropdown.value,
-                            pickup_address=pickup_field.value.strip(),
+                            pickup_address=pickup_dropdown.value,
                             order_date=order_date,
                             delivery_date=delivery_date
                         )
@@ -395,9 +450,9 @@ def create_orders_view(page: ft.Page, app_state):
                             raise Exception("Заказ не найден")
                     else:
                         order_data = OrderCreate(
-                            article=f"ORD-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                            article=article_string,
                             status=status_dropdown.value,
-                            pickup_address=pickup_field.value.strip(),
+                            pickup_address=pickup_dropdown.value,
                             order_date=order_date,
                             delivery_date=delivery_date,
                             items=[]
@@ -434,24 +489,6 @@ def create_orders_view(page: ft.Page, app_state):
                     if isinstance(overlay_item, (ft.AlertDialog, ft.Container, ft.Stack)):
                         page.overlay.remove(overlay_item)
                 page.update()
-            
-            # Кнопки
-            buttons_row = ft.Row(
-                [
-                    ft.ElevatedButton(
-                        "Добавить товар",
-                        on_click=show_add_product_dialog,
-                        bgcolor="#00FA9A",
-                        color="#000000",
-                        style=ft.ButtonStyle(
-                            shape=ft.RoundedRectangleBorder(radius=5),
-                            side=ft.BorderSide(2, "#000000")
-                        )
-                    ),
-                ],
-                alignment=ft.MainAxisAlignment.CENTER,
-                spacing=10
-            )
             
             action_buttons_row = ft.Row(
                 [
@@ -503,31 +540,30 @@ def create_orders_view(page: ft.Page, app_state):
                         ft.Container(
                             content=ft.Column(
                                 [
-                                    status_dropdown,
-                                    pickup_field,
-                                    order_date_field,
-                                    delivery_date_field,
-                                    ft.Container(height=10),
                                     ft.Text(
                                         "Товары заказа:",
-                                        size=14,
+                                        size=12,
                                         weight=ft.FontWeight.BOLD,
-                                        color="#000000",
-                                        font_family="Times New Roman"
+                                        color="#000000"
                                     ),
+                                    add_item_row,
                                     ft.Container(
-                                        content=order_items_container,
+                                        content=items_list_container,
                                         height=100,
                                         border=ft.border.all(1, "#CCCCCC"),
-                                        padding=5
+                                        padding=5,
+                                        bgcolor="#FAFAFA"
                                     ),
-                                    buttons_row,
+                                    ft.Divider(height=10),
+                                    status_dropdown,
+                                    pickup_dropdown,
+                                    order_date_field,
+                                    delivery_date_field,
                                 ],
-                                scroll=ft.ScrollMode.AUTO,
                                 spacing=8,
                                 horizontal_alignment=ft.CrossAxisAlignment.CENTER
                             ),
-                            height=380,
+                            height=450,
                             width=380,
                             padding=10
                         ),
