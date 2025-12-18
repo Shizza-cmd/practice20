@@ -6,6 +6,7 @@ from app.database import SessionLocal
 from app.services.order_service import get_orders, get_order, create_order, update_order, delete_order
 from app.services.product_service import get_products
 from app.schemas import OrderCreate, OrderUpdate
+from desktop.notifications import show_error, show_warning, show_info
 from datetime import datetime
 
 
@@ -17,12 +18,7 @@ def create_orders_view(page: ft.Page, app_state):
     
     if role not in ["manager", "admin"]:
         from desktop.products_view import create_products_view
-        page.snack_bar = ft.SnackBar(
-            content=ft.Text("Доступ запрещен"),
-            bgcolor=ft.Colors.RED
-        )
-        page.snack_bar.open = True
-        page.update()
+        show_error(page, "Доступ запрещен")
         return create_products_view(page, app_state)
     
     # Получение данных
@@ -189,12 +185,7 @@ def create_orders_view(page: ft.Page, app_state):
             print(f"Ошибка при открытии формы заказа: {ex}")
             import traceback
             traceback.print_exc()
-            page.snack_bar = ft.SnackBar(
-                content=ft.Text(f"Ошибка при открытии формы: {str(ex)}"),
-                bgcolor=ft.Colors.RED
-            )
-            page.snack_bar.open = True
-            page.update()
+            show_error(page, f"Ошибка при открытии формы: {str(ex)}")
     
     def edit_order(order_id: int):
         """Открытие формы редактирования заказа"""
@@ -429,33 +420,18 @@ def create_orders_view(page: ft.Page, app_state):
                         if isinstance(overlay_item, (ft.AlertDialog, ft.Container, ft.Stack)):
                             page.overlay.remove(overlay_item)
                     
-                    page.snack_bar = ft.SnackBar(
-                        content=ft.Text("Заказ сохранен"),
-                        bgcolor=ft.Colors.GREEN
-                    )
-                    page.snack_bar.open = True
-                    
                     refresh_orders()
                     page.update()
+                    show_info(page, "Заказ успешно сохранен")
                 except ValueError as ex:
-                    page.snack_bar = ft.SnackBar(
-                        content=ft.Text(f"Ошибка: {str(ex)}"),
-                        bgcolor=ft.Colors.RED
-                    )
-                    page.snack_bar.open = True
-                    page.update()
+                    show_error(page, f"Ошибка: {str(ex)}")
                 except Exception as ex:
                     import traceback
                     traceback.print_exc()
                     for overlay_item in list(page.overlay):
                         if isinstance(overlay_item, (ft.AlertDialog, ft.Container, ft.Stack)):
                             page.overlay.remove(overlay_item)
-                    page.snack_bar = ft.SnackBar(
-                        content=ft.Text(f"Ошибка: {str(ex)}"),
-                        bgcolor=ft.Colors.RED
-                    )
-                    page.snack_bar.open = True
-                    page.update()
+                    show_error(page, f"Ошибка: {str(ex)}")
                 finally:
                     save_db.close()
             
@@ -599,12 +575,7 @@ def create_orders_view(page: ft.Page, app_state):
         except Exception as ex:
             if form_db:
                 form_db.close()
-            page.snack_bar = ft.SnackBar(
-                content=ft.Text(f"Ошибка при загрузке формы: {str(ex)}"),
-                bgcolor=ft.Colors.RED
-            )
-            page.snack_bar.open = True
-            page.update()
+            show_error(page, f"Ошибка при загрузке формы: {str(ex)}")
             import traceback
             traceback.print_exc()
     
@@ -620,30 +591,23 @@ def create_orders_view(page: ft.Page, app_state):
             try:
                 if delete_order(db, order_id):
                     refresh_orders()
-                    page.snack_bar = ft.SnackBar(
-                        content=ft.Text("Заказ удален"),
-                        bgcolor=ft.Colors.GREEN
-                    )
+                    confirm_dialog.open = False
+                    if confirm_dialog in page.overlay:
+                        page.overlay.remove(confirm_dialog)
+                    page.update()
+                    show_info(page, "Заказ успешно удален")
                 else:
-                    page.snack_bar = ft.SnackBar(
-                        content=ft.Text("Ошибка удаления"),
-                        bgcolor=ft.Colors.RED
-                    )
-                page.snack_bar.open = True
-                confirm_dialog.open = False
-                if confirm_dialog in page.overlay:
-                    page.overlay.remove(confirm_dialog)
-                page.update()
+                    confirm_dialog.open = False
+                    if confirm_dialog in page.overlay:
+                        page.overlay.remove(confirm_dialog)
+                    page.update()
+                    show_error(page, "Ошибка удаления")
             except Exception as ex:
                 confirm_dialog.open = False
                 if confirm_dialog in page.overlay:
                     page.overlay.remove(confirm_dialog)
-                page.snack_bar = ft.SnackBar(
-                    content=ft.Text(f"Ошибка: {str(ex)}"),
-                    bgcolor=ft.Colors.RED
-                )
-                page.snack_bar.open = True
                 page.update()
+                show_error(page, f"Ошибка: {str(ex)}")
         
         confirm_dialog = ft.AlertDialog(
             title=ft.Text("Подтверждение", color="#000000"),

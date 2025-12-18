@@ -8,6 +8,7 @@ from app.services.product_service import (
     delete_product, get_categories, get_manufacturers, get_suppliers
 )
 from app.schemas import ProductCreate, ProductUpdate
+from desktop.notifications import show_error, show_warning, show_info
 import os
 from PIL import Image
 import uuid
@@ -315,12 +316,7 @@ def create_products_view(page: ft.Page, app_state):
             print(f"Ошибка при открытии формы добавления товара: {ex}")
             import traceback
             traceback.print_exc()
-            page.snack_bar = ft.SnackBar(
-                content=ft.Text(f"Ошибка при открытии формы: {str(ex)}"),
-                bgcolor=ft.Colors.RED
-            )
-            page.snack_bar.open = True
-            page.update()
+            show_error(page, f"Ошибка при открытии формы: {str(ex)}")
     
     def edit_product(product_id: int):
         """Открытие формы редактирования товара"""
@@ -331,12 +327,7 @@ def create_products_view(page: ft.Page, app_state):
         global _open_form_dialog
         
         if _open_form_dialog is not None:
-            page.snack_bar = ft.SnackBar(
-                content=ft.Text("Закройте текущее окно редактирования перед открытием нового"),
-                bgcolor=ft.Colors.ORANGE
-            )
-            page.snack_bar.open = True
-            page.update()
+            show_warning(page, "Закройте текущее окно редактирования перед открытием нового")
             return
         
         form_db = SessionLocal()
@@ -354,30 +345,15 @@ def create_products_view(page: ft.Page, app_state):
             suppliers_list = get_suppliers(form_db)
             
             if not categories:
-                page.snack_bar = ft.SnackBar(
-                    content=ft.Text("Ошибка: нет категорий в базе данных."),
-                    bgcolor=ft.Colors.RED
-                )
-                page.snack_bar.open = True
-                page.update()
+                show_error(page, "Нет категорий в базе данных.")
                 return
             
             if not manufacturers:
-                page.snack_bar = ft.SnackBar(
-                    content=ft.Text("Ошибка: нет производителей в базе данных."),
-                    bgcolor=ft.Colors.RED
-                )
-                page.snack_bar.open = True
-                page.update()
+                show_error(page, "Нет производителей в базе данных.")
                 return
             
             if not suppliers_list:
-                page.snack_bar = ft.SnackBar(
-                    content=ft.Text("Ошибка: нет поставщиков в базе данных."),
-                    bgcolor=ft.Colors.RED
-                )
-                page.snack_bar.open = True
-                page.update()
+                show_error(page, "Нет поставщиков в базе данных.")
                 return
             
             # Поля формы
@@ -608,22 +584,12 @@ def create_products_view(page: ft.Page, app_state):
                     refresh_products()
                     page.update()
                 except ValueError as ex:
-                    page.snack_bar = ft.SnackBar(
-                        content=ft.Text(f"Ошибка валидации: {str(ex)}"),
-                        bgcolor=ft.Colors.RED
-                    )
-                    page.snack_bar.open = True
-                    page.update()
+                    show_error(page, f"Ошибка валидации: {str(ex)}")
                 except Exception as ex:
                     for overlay_item in list(page.overlay):
                         if isinstance(overlay_item, (ft.AlertDialog, ft.Container, ft.Stack)):
                             page.overlay.remove(overlay_item)
-                    page.snack_bar = ft.SnackBar(
-                        content=ft.Text(f"Ошибка: {str(ex)}"),
-                        bgcolor=ft.Colors.RED
-                    )
-                    page.snack_bar.open = True
-                    page.update()
+                    show_error(page, f"Ошибка: {str(ex)}")
                 finally:
                     save_db.close()
             
@@ -762,12 +728,7 @@ def create_products_view(page: ft.Page, app_state):
         except Exception as ex:
             if form_db:
                 form_db.close()
-            page.snack_bar = ft.SnackBar(
-                content=ft.Text(f"Ошибка при загрузке формы: {str(ex)}"),
-                bgcolor=ft.Colors.RED
-            )
-            page.snack_bar.open = True
-            page.update()
+            show_error(page, f"Ошибка при загрузке формы: {str(ex)}")
             import traceback
             traceback.print_exc()
     
@@ -783,30 +744,23 @@ def create_products_view(page: ft.Page, app_state):
             try:
                 if delete_product(db, product_id):
                     refresh_products()
-                    page.snack_bar = ft.SnackBar(
-                        content=ft.Text("Товар удален"),
-                        bgcolor=ft.Colors.GREEN
-                    )
+                    confirm_dialog.open = False
+                    if confirm_dialog in page.overlay:
+                        page.overlay.remove(confirm_dialog)
+                    page.update()
+                    show_info(page, "Товар успешно удален")
                 else:
-                    page.snack_bar = ft.SnackBar(
-                        content=ft.Text("Ошибка удаления. Товар может быть в заказах."),
-                        bgcolor=ft.Colors.RED
-                    )
-                page.snack_bar.open = True
-                confirm_dialog.open = False
-                if confirm_dialog in page.overlay:
-                    page.overlay.remove(confirm_dialog)
-                page.update()
+                    confirm_dialog.open = False
+                    if confirm_dialog in page.overlay:
+                        page.overlay.remove(confirm_dialog)
+                    page.update()
+                    show_error(page, "Ошибка удаления. Товар может быть в заказах.")
             except Exception as ex:
                 confirm_dialog.open = False
                 if confirm_dialog in page.overlay:
                     page.overlay.remove(confirm_dialog)
-                page.snack_bar = ft.SnackBar(
-                    content=ft.Text(f"Ошибка: {str(ex)}"),
-                    bgcolor=ft.Colors.RED
-                )
-                page.snack_bar.open = True
                 page.update()
+                show_error(page, f"Ошибка: {str(ex)}")
         
         confirm_dialog = ft.AlertDialog(
             title=ft.Text("Подтверждение", color="#000000"),
@@ -864,12 +818,7 @@ def create_products_view(page: ft.Page, app_state):
     def navigate_to_orders(e):
         """Переход к заказам"""
         if app_state.current_user.role not in ["manager", "admin"]:
-            page.snack_bar = ft.SnackBar(
-                content=ft.Text("Доступ запрещен"),
-                bgcolor=ft.Colors.RED
-            )
-            page.snack_bar.open = True
-            page.update()
+            show_error(page, "Доступ запрещен")
             return
         
         from desktop.orders_view import create_orders_view

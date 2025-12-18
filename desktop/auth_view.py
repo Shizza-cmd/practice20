@@ -4,6 +4,7 @@
 import flet as ft
 from app.database import SessionLocal
 from app.services.auth_service import verify_password, get_user_by_login
+from desktop.notifications import show_error, show_warning, show_info
 
 
 def create_login_view(page: ft.Page, app_state):
@@ -28,22 +29,13 @@ def create_login_view(page: ft.Page, app_state):
         border_color="#000000"
     )
     
-    error_text = ft.Text(
-        value="",
-        color=ft.Colors.RED,
-        visible=False,
-        font_family="Times New Roman"
-    )
-    
     def on_login_click(e):
         """Обработчик входа"""
         login = login_field.value
         password = password_field.value
         
         if not login or not password:
-            error_text.value = "Введите логин и пароль"
-            error_text.visible = True
-            page.update()
+            show_warning(page, "Введите логин и пароль", "Внимание")
             return
         
         try:
@@ -65,9 +57,7 @@ def create_login_view(page: ft.Page, app_state):
                 db.close()
             
         except Exception as ex:
-            error_text.value = str(ex)
-            error_text.visible = True
-            page.update()
+            show_error(page, str(ex))
     
     def on_guest_click(e):
         """Обработчик просмотра как гость"""
@@ -157,7 +147,6 @@ def create_login_view(page: ft.Page, app_state):
                         ft.Container(height=20),
                         login_field,
                         password_field,
-                        error_text,
                         ft.Container(height=10),
                         login_button,
                         guest_button
